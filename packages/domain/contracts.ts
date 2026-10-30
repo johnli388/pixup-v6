@@ -1,5 +1,24 @@
 import { z } from 'zod';
 
+export const itemPassportSchema = z.object({
+  asset_id: z.string(),
+  serial: z.string(),
+  registered_at: z.string(),
+  issuance_mode: z.enum(['agency', 'licensed', 'platform', 'own']).nullable(),
+  registration_scope: z.literal(
+    'Registry entry only; not proof of rights or physical authenticity.',
+  ),
+  authenticity: z.enum(['unverified', 'verified', 'rejected', 'revoked']),
+  condition_grade: z.string(),
+  assessed_at: z.string().nullable(),
+  certificate: z
+    .object({ id: z.string(), status: z.enum(['active', 'superseded', 'revoked']) })
+    .nullable(),
+  custody: z.string(),
+  simulation: z.literal(true),
+});
+export type ItemPassport = z.infer<typeof itemPassportSchema>;
+
 export const paymentConfigurationSchema = z.object({
   provider: z.enum(['demo', 'stripe_test']),
   test_mode: z.literal(true),
@@ -7,6 +26,20 @@ export const paymentConfigurationSchema = z.object({
   webhooks_configured: z.boolean(),
 });
 export type PaymentConfiguration = z.infer<typeof paymentConfigurationSchema>;
+export const refundStatusSchema = z.object({
+  id: z.string(),
+  status: z.enum([
+    'created',
+    'pending',
+    'requires_action',
+    'succeeded',
+    'failed',
+    'canceled',
+    'requires_review',
+  ]),
+  amount_cents: z.number().int().nonnegative(),
+});
+export type RefundStatus = z.infer<typeof refundStatusSchema>;
 export const paymentStatusSchema = z.object({
   id: z.string(),
   status: z.enum(['pending_payment', 'paid', 'fulfilled', 'refunded', 'canceled']),
@@ -14,8 +47,35 @@ export const paymentStatusSchema = z.object({
   provider_payment_status: z.enum(['paid', 'unpaid', 'no_payment_required']).nullable(),
   reservation_expires_at: z.string(),
   url: z.string().nullable(),
+  refund: refundStatusSchema.nullable(),
 });
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+export const paymentQueueSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      status: z.string(),
+      total_cents: z.number().int(),
+      credit_units: z.number().int(),
+      payment_status: z.string(),
+      provider_session_id: z.string().nullable(),
+      created_at: z.string(),
+      review_reason: z.string().nullable(),
+      review_status: z.string().nullable(),
+      assigned_to: z.string().nullable(),
+      version: z.number().int().nullable(),
+      due_at: z.string().nullable(),
+      refund_id: z.string().nullable(),
+      refund_status: z.string().nullable(),
+      refund_cents: z.number().int().nullable(),
+      adjusted_cash_cents: z.number().int().nonnegative().default(0),
+      provider_refund_id: z.string().nullable(),
+    }),
+  ),
+  next_cursor: z.string().nullable(),
+});
+export type PaymentQueue = z.infer<typeof paymentQueueSchema>;
 
 export const staffPermissions = [
   'rights',
@@ -24,6 +84,7 @@ export const staffPermissions = [
   'finance',
   'support',
   'audit',
+  'identity_admin',
 ] as const;
 export type StaffPermission = (typeof staffPermissions)[number];
 export const apiErrorSchema = z.object({

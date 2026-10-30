@@ -2,20 +2,28 @@
 
 Updated October 30, 2026 after reviewing all 40 pages of [PixUP-BP-J.pdf](../../PixUP-BP-J.pdf) and all 18 pages of [PixUP-Pitch-J.pdf](../../PixUP-Pitch-J.pdf). References use physical PDF pages; BP appendices A1–A16 are pages 25–40. Read with the [business review and decision register](README.md), [backend plan](02-backend-development-plan.md), [frontend plan](03-ui-frontend-development-plan.md) and [implementation status](../implementation-status.md). Scope remains web marketplace and invited creators first, followed by CVM and LiveUP pilots, as selected by the user.
 
+Implementation baseline reconciled October 30, 2026 through migrations **001–014** and the [cross-feature code review](../code-review-2026-10-30.md). The source includes configurable identity/email and MFA, private evidence/logistics adapters, scoped payment adjustments and Connect test transfers, SaaS entitlements, price/attribution/signing workflows, channel pilots, scoped read-only tools and versioned commercial approvals. Latest completed verification: **139 backend tests, 23 browser journeys, production build and PostgreSQL recovery/runtime-role checks**, including SCRAM-authenticated test roles. These are local/test implementations; hosted-provider acceptance, actual hardware/carrier operation, production commercial approval and live-money readiness remain outstanding. This documentation update records those results and does not rerun the application suite.
+
 ## 0. Implemented baseline and PDF-driven changes
+
+Item 1 local increment (migration 014): a versioned seven-topic commercial register now separates documentary local reviews from executable pilot controls. Independent current finance reviewers can pause/restore PixUP-owned credit redemption or new checkout. Shared transaction-core locking and immutable quote/order snapshots prevent approval races and retroactive terms changes. Demo economics and the 18+ baseline remain; production contracts, taxation and jurisdiction approvals are unresolved. See [implementation and boundaries](../commercial-policy.md).
 
 This is an incremental target architecture. The existing source already implements a local lifecycle pilot; the deployment diagram below describes the production target, not provisioned infrastructure.
 
-| Boundary         | Implemented on October 30                                                                                                 | Required evolution                                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Application      | Next.js shared role workspaces; modular Express API; PGlite or PostgreSQL adapter                                         | Route/domain extraction, separately protected staff application, managed PostgreSQL and deployment                           |
-| Identity         | Local sessions, organization invitations/revocation, viewer/publisher/owner checks, six staff permission scopes           | Verified email delivery, recovery, staff MFA, owner transfer, permission administration and DB defense in depth              |
-| Assets and trust | Unique specimens, moderated collections, assessments, custody, certificate history and hash chains                        | Pack/variant/batch lineage, rights versions, physical evidence, independent signing/checkpoints and consigned pool authority |
-| Payments         | Server-only Stripe-hosted **test** Checkout, durable attempts, signed-event inbox, status reconciliation and demo adapter | Provider refunds/disputes, recipient onboarding/payouts, exception tooling, approved live mode and financial reconciliation  |
-| RePool           | Immutable versioned buyback offers, expiry, new consent on revision, one credit grant and title transfer                  | Pool membership distinct from title, consignment, impartial admission/governance and reviewed exits                          |
-| Storage/workers  | Bounded artwork in DB, in-process outbox/payment workers; migrations 001–005                                              | Private object storage, scanning, independent workers, durable queues, restore exercises and observability                   |
+| Boundary               | Implemented local/test behavior                                                                                                                                      | Required evolution                                                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application            | Next.js role workspaces; modular Express API; PGlite/PostgreSQL; migrations 001–014                                                                                  | Route/domain extraction, protected staff deployment, managed infrastructure and durable independent workers                                 |
+| Identity               | Configurable OIDC/email, verified invitation links, password recovery, MFA/recovery/replacement, consented owner transfer and independent staff access review        | Hosted provider acceptance, deployment MFA enforcement, provider deprovisioning, authenticated account linking and all-factor-loss recovery |
+| Tenancy and visibility | Nonowner API/worker role checks, transaction-local actor context and initial row policies; publication checks across catalog, media, channels and purchase           | Extend policies beyond collections, invitations and owner transfers; managed credential provisioning and review                             |
+| Assets and trust       | Structured Sports/K-pop attributes, sealed packs/reveals, item passports, reviewed price snapshots, observational attribution and signing/checkpoint tooling         | Rights contracts, production proofs, market calibration, independently managed signing keys and retained checkpoints                        |
+| Payments               | Account-bound Stripe test Checkout, full/partial refunds, refund replacement review, dispute holds, gross-cash reconciliation and opt-in connected-balance transfers | Hosted Checkout/Connect acceptance, dispute loss accounting, transfer reversals, bank payouts and fee/net/bank reconciliation               |
+| Commercial policy      | Seven-topic decision register, independent finance review, pilot checkout/credit controls and immutable quote/order snapshots                                        | Actual creator, protection, refund-window, tax and jurisdiction decisions; local review never approves production launch                    |
+| RePool                 | Versioned offers, new consent on revision, one credit grant/title transfer and return handling                                                                       | Consigned pool authority, approved concentration/governance policy and production liability treatment                                       |
+| Evidence and logistics | Private S3-compatible adapter, ClamAV adapter, content review, capture/seals/bins, incident holds and simulated carrier tracking                                     | Deployed storage/scanner acceptance, evidence procedures, independent object restoration and real carrier integration                       |
+| SaaS and channels      | Versioned test plans, subscriptions/usage, delegated inventory, CVM/LiveUP then GOUP/WaxUP adapters and scoped Query/Match/Route                                     | Hosted billing lifecycle, real device/stream/fulfillment partners, resource agreements and production channel acceptance                    |
+| Operations             | 18+ pilot declarations, privacy controls, metrics/alerts, encrypted backup/restore/load harnesses and CI recovery/role checks                                        | Available dependency assessment, independent security review, managed off-host recovery, alert delivery and representative sustained load   |
 
-Stripe orders cannot use simulated refund/payout actions; live keys are rejected. Session creation/retrieval/expiry has been exercised against Stripe test APIs, but a real hosted completed-payment journey has not. External PostgreSQL validation predates migrations 004–005. Preserve these limits when planning delivery.
+Stripe orders cannot use simulated refund/payout actions; live keys are rejected. Stripe test API checks include session creation/retrieval/expiry and fixture full/partial refunds. Actual hosted Checkout completion and Connect onboarding/transfers remain acceptance work. Database verification covers migrations 001–014, immutable financial/commercial history, concurrent recovery, nonowner API/worker roles and pooled actor-context reset. The CI workflow now includes the separate PostgreSQL recovery/role suite; the updated workflow has not been remotely dispatched.
 
 | Shared requirement IDs                   | PDF evidence                                      | Architecture consequence                                                                                                                                |
 | ---------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,9 +51,9 @@ flowchart TB
     Buyer[Buyer web app]
     Partner[Creator and seller workspace]
     Ops[Operations and VIA console]
-    Devices[CVM and field operations - later]
-    Live[LiveUP - later]
-    Agents[Partner and AI APIs - later]
+    Devices[CVM hardware and field gateway - target]
+    Live[LiveUP streaming provider - target]
+    Agents[Scoped tools and partner APIs]
   end
   Buyer --> Edge[CDN, WAF, TLS and rate limits]
   Partner --> Edge
@@ -73,21 +81,21 @@ flowchart TB
 
 ## 2. Technology baseline and build/buy boundary
 
-| Layer          | Proposed choice                                                                              | Reason and boundary                                                                                                                                               |
-| -------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web            | React + TypeScript + Next.js App Router                                                      | Server-render discoverable catalog pages; interactive workspaces; one language across product teams                                                               |
-| Backend        | Retain TypeScript + Express; REST/OpenAPI                                                    | Existing domain services and transactions remain; expand shared response contracts and generated clients. NestJS migration is optional, not a delivery dependency |
-| Database       | Managed PostgreSQL; SQL migrations with a typed query layer                                  | Relational constraints and transactions suit unique assets, custody, and financial records                                                                        |
-| Cache          | Optional managed Redis once measured need exists                                             | Rate limits and short-lived cache; never authoritative inventory or financial balance                                                                             |
-| Queue          | Managed queue such as AWS SQS                                                                | Retryable, durable workers with dead-letter handling                                                                                                              |
-| Media/evidence | S3-compatible object storage and CDN                                                         | Private originals, public derivatives, retention-controlled evidence                                                                                              |
-| Hosting        | AWS ECS/Fargate, load balancer, RDS, S3, SQS, CloudFront/WAF                                 | One proposed cloud baseline; infrastructure as code; no Kubernetes requirement                                                                                    |
-| Identity       | Local accounts now; managed OIDC target                                                      | Add verified sign-in, MFA and recovery; retain organization memberships and business permissions in PixUP                                                         |
-| Payments       | Stripe-hosted test Checkout implemented; approved live marketplace PSP/Connect model pending | Hosted card entry; retain orders, durable attempts and liabilities. Test Checkout does not implement Connect, refunds or payouts                                  |
-| Shipping/tax   | Provider adapters selected after operational validation                                      | Buy carrier connectivity and tax calculation; retain shipment and tax evidence                                                                                    |
-| Live video     | Managed streaming service in phase 5                                                         | Own stream-to-order/asset association; avoid building video transport                                                                                             |
-| AI             | Separate Python workers only where required                                                  | Keep inference dependencies and failures outside settlement transactions                                                                                          |
-| Telemetry      | OpenTelemetry-compatible traces, logs, metrics and alerts                                    | Follow an order or custody event across webhooks, workers, and providers                                                                                          |
+| Layer          | Proposed choice                                                                               | Reason and boundary                                                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web            | React + TypeScript + Next.js App Router                                                       | Server-render discoverable catalog pages; interactive workspaces; one language across product teams                                                               |
+| Backend        | Retain TypeScript + Express; REST/OpenAPI                                                     | Existing domain services and transactions remain; expand shared response contracts and generated clients. NestJS migration is optional, not a delivery dependency |
+| Database       | Managed PostgreSQL; SQL migrations with a typed query layer                                   | Relational constraints and transactions suit unique assets, custody, and financial records                                                                        |
+| Cache          | Optional managed Redis once measured need exists                                              | Rate limits and short-lived cache; never authoritative inventory or financial balance                                                                             |
+| Queue          | Managed queue such as AWS SQS                                                                 | Retryable, durable workers with dead-letter handling                                                                                                              |
+| Media/evidence | S3-compatible object storage and CDN                                                          | Private originals, public derivatives, retention-controlled evidence                                                                                              |
+| Hosting        | AWS ECS/Fargate, load balancer, RDS, S3, SQS, CloudFront/WAF                                  | One proposed cloud baseline; infrastructure as code; no Kubernetes requirement                                                                                    |
+| Identity       | Configurable OIDC/email adapters alongside local sessions; local MFA and recovery implemented | Providers default off until configured; retain organization permissions in PixUP and validate deployed identity assurance                                         |
+| Payments       | Stripe test Checkout, partial refunds/dispute holds and opt-in Connect test transfers         | Hosted acceptance, live marketplace suitability, transfer reversal and bank payout/accounting remain separate gates                                               |
+| Shipping/tax   | Provider adapters selected after operational validation                                       | Buy carrier connectivity and tax calculation; retain shipment and tax evidence                                                                                    |
+| Live video     | Managed streaming service in phase 5                                                          | Own stream-to-order/asset association; avoid building video transport                                                                                             |
+| AI             | Separate Python workers only where required                                                   | Keep inference dependencies and failures outside settlement transactions                                                                                          |
+| Telemetry      | OpenTelemetry-compatible traces, logs, metrics and alerts                                     | Follow an order or custody event across webhooks, workers, and providers                                                                                          |
 
 Retain pinned working dependencies and record upgrade ownership. Cloud and live-payment selection is provisional: confirm business-model acceptance, regional support, data terms, operational limits, and total cost before contracting. A Stripe test account is configured; this plan provisions no infrastructure or live integrations.
 
@@ -124,9 +132,13 @@ Every command checks actor, organization membership, resource relationship, acti
 
 Use PostgreSQL row-level policies as defense in depth for private tenant tables, backed by API authorization. Runtime database roles must not be table owners or have bypass privileges; test connection-pool context resets and worker tenant scope. PostgreSQL documents owner/bypass behavior explicitly. [PostgreSQL row security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 
-These database policies and staff MFA remain targets. Current API checks already separate rights, warehouse, VIA, finance, support and audit permissions. Organization revocation invalidates sessions; the browser clears private query scopes on detected changes, with active session refresh every 15 seconds and on focus. Immediate server denial is the security boundary; browser refresh is not instantaneous remote erasure. Extend the existing permission model instead of restoring a single all-purpose staff flag.
+Migration 013 implements initial policies on collections, organization invitations and owner transfers, with separate nonowner API/worker roles and transaction-local actor context. MFA enrollment, one-time recovery, replacement, session revocation and a seventh `identity_admin` scope are implemented; managed providers and staff-MFA deployment enforcement require explicit configuration. Broader tenant policies remain work. Organization/access changes invalidate sessions; the browser clears private query scopes on detected changes, with session refresh every 15 seconds and on focus. Immediate server denial is the security boundary; browser refresh is not instantaneous remote erasure.
+
+Public visibility must inspect the asset's collection foreign key and require a published parent; a policy-hidden LEFT JOIN parent must never be treated as “no collection.” Shared predicates in `packages/domain/catalog-visibility.ts` protect public catalog, artwork, certificates, saved items and channel views. Saved responses omit private owner/workspace IDs and recheck current access. Individual listing, channel allocation, quote, checkout and payment completion cannot bypass collection publication.
 
 ## 5. Core data model
+
+The diagram and entity requirements describe the target model, not a claim that every agreement or governance entity exists. Migrations 001–014 are the executable schema; extend existing pack, evidence, subscription, identity and commercial-policy records rather than duplicating them.
 
 ```mermaid
 erDiagram
@@ -187,7 +199,7 @@ Ownership, location, availability, certification, and RePool eligibility are sep
 
 Primary controlled issuance follows: rights approval → approved edition → manufacturing batch → QC/intake → identifiable stock → publishing → sale/fulfillment. Publication may create a collection preview, but must not imply stock is available. MVP excludes preorders until delivery/refund terms are designed.
 
-BP p. 3 starts with an unverified pack and optional later VIA review. Model `source_registered`, authenticity outcome and condition grade independently. An agency sealed pack records supplier, lot, seal and sale; witnessed opening creates or links physical specimens without backdating VIA approval. Keep hidden contents private until reveal. Controlled assessed-stock publishing remains the current web pilot; raw sealed-pack sales need a separate eligibility policy before activation. VIA service fees follow a fixed approved schedule, independent of sale value or a favorable assessment.
+BP p. 3 starts with an unverified pack and optional later VIA review. Model `source_registered`, authenticity outcome and condition grade independently. An agency sealed pack records supplier, lot, seal and sale; witnessed opening creates or links physical specimens without backdating VIA approval. Keep hidden contents private until reveal. The web pilot retains assessed-stock publishing; gated channel adapters support registered sealed packs and witnessed reveals without implying VIA authentication. Production raw-pack eligibility remains separately approved. VIA service fees follow a fixed approved schedule, independent of sale value or a favorable assessment.
 
 For unique assets, enforce one active sale allocation and one active reservation. All channels compete for that allocation through the same backend. Initially allocate CVM stock to a specific device so it cannot also be promised for online shipment.
 
@@ -203,7 +215,7 @@ C2PA may supplement provenance of uploaded artwork and evidence images; it does 
 
 Use two explicitly separated books: fiat accounting in currency minor units and ecosystem credits in defined integer units. Balances are derived from journal entries, with transactional balance projections for authorization. No floating-point money. No unrestricted edit-balance endpoint. Corrections reverse and repost with an audit reason.
 
-Recommended initial money flow:
+Production target money flow (the current local pilot transfers title on confirmed payment and holds seller settlement for separate review):
 
 1. Buyer accepts a server-generated quote showing item price, shipping, tax, fees, and any permitted credits.
 2. The backend reserves inventory and creates a durable order/payment attempt.
@@ -230,7 +242,7 @@ For provider webhooks: verify signature against raw bytes, store the event durab
 
 Do not hold a database transaction open while calling a PSP, carrier, or signing service. Use pending states, idempotency keys, reconciliation, and explicit compensating actions across these boundaries.
 
-The current Stripe adapter already persists the exact create payload, retrieves provider truth before confirming/releasing inventory, and holds ambiguous attempts for review. Extend this into an owned exception queue with deadlines, safe provider lookup, approved refund/correction commands and auditable closure. Never release a held unique item merely because a browser timer or worker retry budget expires. Namespace provider IDs and deduplication by account and test/live mode before adding connected accounts.
+The Stripe adapter persists exact provider payloads and account/test scope, retrieves provider truth before confirming/releasing inventory, and retains ambiguous attempts for review. Full/partial test refunds, independently approved failed-refund replacements, canonical dispute events and immutable gross-cash reconciliation are implemented. Remaining recovery includes dispute loss accounting, external transfer reversals and bank reconciliation. `packages/domain/inventory-holds.ts` gives stock movement, resale, payment completion and new tool results the same holds for full/partial refunds, disputes, pending transfers, open reconciliation exceptions and queued dispute events. Never release an item merely because a browser timer or retry budget expires.
 
 Application idempotency must outlive the provider's retention window. Stripe documents that API v1 keys may be pruned after at least 24 hours; blindly replaying an old create can create another payment. The pilot stops automatic recreation after 23 hours of ambiguity. Retain local attempts and resolve unknown outcomes through evidence, not a new key. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
 
@@ -252,6 +264,8 @@ Application idempotency must outlive the provider's retention window. Stripe doc
 
 ## 10. CVM, LiveUP, and partner integrations
 
+CVM, LiveUP, GOUP/WaxUP and scoped read-only tools now have local adapters against the shared transaction core, with gates disabled until explicitly enabled. Signed vend commands/events, device simulation, witnessed reveal lineage, participant shipping shares and business-gated cash wholesale are implemented. The contracts below remain the production target: real hardware, streaming/recording providers, outbound custody selection and partner resource agreements are not established by simulator success. See [channel implementation and limits](../channel-adapters.md).
+
 | Channel              | Required integration and controls                                                                                                                                                                                                                      |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | CVM                  | Device identity/certificates, configuration version, assigned stock, heartbeats, order/command IDs, dispense sensors, local durable command journal, fault states, maintenance history                                                                 |
@@ -268,9 +282,11 @@ A network connection, signed telemetry, and camera image are evidence signals ra
 
 BP p. 15 splits resource ownership across device, cards, protocol, operations and site. Store effective partner agreements for each factor and create contractual payables from the same sale/fulfillment event. A MeetUP servicing task and a CVM sale may describe one transaction: assign one primary commerce channel and separate assistance/attribution tags to prevent double-counted GMV or commissions. Record deployment cost, stock cost, downtime, replenishment, refunds and partner shares before comparing actual node payback with the $15 pack scenario.
 
-Card shows/GlowUP are proposed early manual validation paths before CVM scale (BP p. 27); GOUP is an early experiment in BP p. 28. Permit research and approved event-tagged manual pilots alongside the web sequence without activating unbuilt group funding, draws or device checkout. WaxUP needs cash wholesale terms, conditional returns and partner attribution; suggested retail/advertising terms must not become a PulseRate floor. Confirm enforceable partner terms before automating them.
+Card shows/GlowUP remain proposed manual validation paths before CVM scale (BP p. 27); GOUP is an early experiment in BP p. 28. Local GOUP/WaxUP and CVM adapters now exist, but real partner operation still needs channel acceptance and approved obligations. Software draws remain deferred. WaxUP needs approved cash wholesale terms, conditional returns and partner attribution; suggested retail/advertising terms must not become a PulseRate floor.
 
 ## 11. Security, operations, and reliability targets
+
+Local controls now include CSP nonces, throttling, consent/restriction/export workflows, default 18+ declarations, alert evaluation and encrypted PostgreSQL restore/load exercises. These do not establish the targets below: advisory assessment remains unavailable, hosted receiver delivery and managed off-host recovery remain outstanding, and proposed performance/RPO/RTO targets require representative deployment evidence. See [operational readiness](../operational-readiness.md).
 
 Public launch targets below are engineering proposals, to validate under load and real provider behavior.
 

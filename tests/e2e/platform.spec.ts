@@ -3,10 +3,23 @@ import AxeBuilder from '@axe-core/playwright';
 import sharp from 'sharp';
 
 async function login(page: Page, role = 'collector') {
+  test.setTimeout(90000);
   await page.goto('/login');
   await page.getByLabel('Email address').fill(`${role}@pixup.demo`);
   await page.getByLabel('Password', { exact: true }).fill('PixupDemo2026!');
+  const response = page.waitForResponse(
+    (r) => r.url().endsWith('/api/auth/login') && r.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const result = await response;
+  if (result.status() === 429) {
+    // The regression suite shares a loopback address; honor the real login throttle.
+    const seconds = Number(result.headers()['retry-after']);
+    expect(seconds).toBeGreaterThan(0);
+    expect(seconds).toBeLessThanOrEqual(60);
+    await page.waitForTimeout(seconds * 1000 + 100);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  }
   await expect(page).toHaveURL('http://127.0.0.1:3100/');
   await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toHaveCount(0);
 }
@@ -26,12 +39,23 @@ test('discover, filter, inspect, save, buy with credits, and refund', async ({ p
   await expect(page.locator('.item-card')).toHaveCount(3);
   await login(page);
   await page.goto('/items/court-01');
+  await expect(page.getByRole('region', { name: 'Item passport' })).toContainText(
+    'Source registration',
+  );
+  await expect(page.getByRole('region', { name: 'Item passport' })).toContainText(
+    'VIA authenticity',
+  );
   await page.getByRole('link', { name: 'Make it yours' }).click();
   await page.getByLabel(/Use available credits/).check();
   await page.getByRole('button', { name: 'Review total' }).click();
   await expect(page.locator('.total')).toContainText('$113');
+  await page.getByText('Local pilot terms · version 1', { exact: true }).click();
+  await expect(
+    page.getByText('Minimum age: 18+. Production launch is not approved.'),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Confirm demo purchase' }).click();
   await expect(page.getByRole('heading', { name: 'A new chapter, confirmed.' })).toBeVisible();
+  await expect(page.getByText('Local pilot terms · version 1', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'A new chapter, confirmed.' })).toBeVisible();
   await page.getByRole('button', { name: 'Request vault refund' }).click();
@@ -48,6 +72,68 @@ test('discover, filter, inspect, save, buy with credits, and refund', async ({ p
     page.getByRole('heading', { name: 'Above the Rim · Rookie Edition', exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('finance reviews a Stripe test refund with required reason and confirmation', async ({
+  page,
+}) => {
+  await login(page, 'ops');
+  let refunded = false;
+  let submitted: Record<string, unknown> | undefined;
+  await page.route('**/api/ops/payments', async (route) => {
+    await route.fulfill({
+      json: {
+        items: [
+          {
+            id: 'finance-order',
+            title: 'Finance test collectible',
+            status: refunded ? 'refunded' : 'fulfilled',
+            total_cents: 11300,
+            credit_units: 1200,
+            payment_status: 'succeeded',
+            provider_session_id: 'cs_test_browser',
+            created_at: new Date().toISOString(),
+            review_reason: null,
+            review_status: null,
+            assigned_to: null,
+            version: null,
+            due_at: null,
+            refund_id: refunded ? 'refund-browser' : null,
+            refund_status: refunded ? 'succeeded' : null,
+            refund_cents: refunded ? 11300 : null,
+            provider_refund_id: refunded ? 're_browser' : null,
+          },
+        ],
+        next_cursor: null,
+      },
+    });
+  });
+  await page.route('**/api/ops/payments/finance-order/refund', async (route) => {
+    submitted = route.request().postDataJSON();
+    refunded = true;
+    await route.fulfill({
+      json: {
+        id: 'finance-order',
+        status: 'refunded',
+        payment_status: 'succeeded',
+        provider_payment_status: 'paid',
+        reservation_expires_at: new Date().toISOString(),
+        url: null,
+        refund: { id: 'refund-browser', status: 'succeeded', amount_cents: 11300 },
+      },
+    });
+  });
+  await page.goto('/ops');
+  await page.getByRole('button', { name: 'Payments', exact: true }).click();
+  await page.getByRole('button', { name: 'Review payment', exact: true }).click();
+  const modal = page.getByRole('dialog');
+  await expect(modal.getByRole('button', { name: 'Issue full test refund' })).toBeDisabled();
+  await modal.getByLabel('Review note').fill('Customer requested a full vault refund.');
+  await modal.getByLabel('I reviewed custody, payment and the full refund amount.').check();
+  await modal.getByRole('button', { name: 'Issue full test refund' }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.locator('table')).toContainText('Refund: succeeded');
+  expect(submitted?.reason).toBe('Customer requested a full vault refund.');
 });
 
 test('creator draft, independent review, stock intake and publication', async ({ page }) => {

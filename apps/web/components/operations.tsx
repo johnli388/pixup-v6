@@ -1,4 +1,6 @@
 'use client';
+import { AccessAdministrationPanel } from './identity-access';
+import { CommercialOperations } from './commercial';
 import { useState } from 'react';
 import {
   ShieldCheck,
@@ -12,6 +14,11 @@ import {
 } from 'lucide-react';
 import { useData, useAction, useSession, type Row } from './providers';
 import { CardArt } from './art';
+import { PrivacyQueue, MonitoringPanel } from './privacy-operations';
+import { PricingOperations, TrustOperations } from './price-trust';
+import { BillingOperations, FinanceApprovals } from './saas-inventory';
+import { PaymentOperations } from './payment-operations';
+import { EvidenceWorkspace, LogisticsOperations } from './evidence-logistics';
 import {
   PageTitle,
   SectionTitle,
@@ -39,15 +46,28 @@ function OperationsInner() {
   const permissions = user?.staff_permissions || [];
   const can = (permission: (typeof permissions)[number]) => permissions.includes(permission);
   const tabs = [
+    ...(can('warehouse') || can('via') || can('support') ? ['Physical handling'] : []),
+    ...(can('warehouse') || can('rights') || can('support') || can('audit') ? ['Evidence'] : []),
     ...(can('warehouse') || can('via') ? ['Intakes'] : []),
     ...(can('rights') || (can('warehouse') && can('via')) ? ['Publishing'] : []),
     ...(can('warehouse') ? ['Fulfillment'] : []),
-    ...(can('finance') ? ['Settlements', 'Reconciliation'] : []),
-    ...(can('support') ? ['Support'] : []),
-    ...(can('audit') ? ['Audit'] : []),
+    ...(can('finance')
+      ? [
+          'Payments',
+          'Settlements',
+          'Reconciliation',
+          'Pricing',
+          'Billing',
+          'Approvals',
+          'Commercial',
+        ]
+      : []),
+    ...(can('identity_admin') ? ['Access'] : []),
+    ...(can('support') ? ['Support', 'Privacy'] : []),
+    ...(can('audit') ? ['Audit', 'Monitoring', 'Signatures'] : []),
   ];
   const { data, error, isPending } = useData('/ops');
-  const [tab, setTab] = useState(tabs[0] || ''),
+  const [tab, setTab] = useState(tabs.includes('Intakes') ? 'Intakes' : tabs[0] || ''),
     [modal, setModal] = useState<{ type: string; row: Row } | null>(null);
   if (isPending) return <Loading />;
   if (error) return <ErrorNotice error={error} />;
@@ -103,6 +123,9 @@ function OperationsInner() {
           </button>
         ))}
       </div>
+      {tab === 'Evidence' && <EvidenceWorkspace />}
+      {tab === 'Commercial' && <CommercialOperations />}
+      {tab === 'Physical handling' && <LogisticsOperations />}
       {tab === 'Intakes' && (
         <>
           {data.intakes.length ? (
@@ -144,9 +167,15 @@ function OperationsInner() {
                         {i.status === 'awaiting_receipt' && can('warehouse') ? (
                           <button
                             className="button small secondary"
-                            onClick={() => setModal({ type: 'receive', row: i })}
+                            onClick={() =>
+                              data.physical_capture_required && !i.capture_id
+                                ? setTab('Physical handling')
+                                : setModal({ type: 'receive', row: i })
+                            }
                           >
-                            Record receipt
+                            {data.physical_capture_required && !i.capture_id
+                              ? 'Capture physical identity'
+                              : 'Record receipt'}
                           </button>
                         ) : i.status === 'received' &&
                           i.offer_status === 'declined' &&
@@ -286,9 +315,15 @@ function OperationsInner() {
                       {o.status === 'paid' && o.fulfillment === 'ship' ? (
                         <button
                           className="button small"
-                          onClick={() => setModal({ type: 'fulfill', row: o })}
+                          onClick={() =>
+                            data.physical_capture_required || o.tracked
+                              ? setTab('Physical handling')
+                              : setModal({ type: 'fulfill', row: o })
+                          }
                         >
-                          Record demo shipment
+                          {data.physical_capture_required || o.tracked
+                            ? 'Open shipment tracking'
+                            : 'Record demo shipment'}
                         </button>
                       ) : (
                         <span className="muted">Complete</span>
@@ -330,7 +365,7 @@ function OperationsInner() {
                       <Status status={s.status} />
                     </td>
                     <td>
-                      {s.status === 'held' ? (
+                      {s.status === 'held' && s.payment_provider === 'demo' ? (
                         <button
                           className="button small secondary"
                           onClick={() => setModal({ type: 'release', row: s })}
@@ -338,7 +373,11 @@ function OperationsInner() {
                           Review demo payout
                         </button>
                       ) : (
-                        <span className="muted">Recorded</span>
+                        <span className="muted">
+                          {s.payment_provider === 'stripe_test'
+                            ? 'Stripe payouts unavailable'
+                            : 'Recorded'}
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -389,6 +428,14 @@ function OperationsInner() {
             description="Collector questions and order disputes will appear here."
           />
         ))}
+      {tab === 'Privacy' && <PrivacyQueue />}
+      {tab === 'Pricing' && <PricingOperations />}
+      {tab === 'Billing' && <BillingOperations />}
+      {tab === 'Approvals' && <FinanceApprovals />}
+      {tab === 'Signatures' && <TrustOperations />}
+      {tab === 'Monitoring' && <MonitoringPanel />}
+      {tab === 'Access' && <AccessAdministrationPanel />}
+      {tab === 'Payments' && <PaymentOperations />}
       {tab === 'Reconciliation' && (
         <>
           <div className="notice warning">
@@ -396,8 +443,9 @@ function OperationsInner() {
             <div>
               <strong>Internal demo reconciliation only</strong>
               <p>
-                Journal balances do not verify external cash. No PSP, bank statements, or actual
-                inventory feeds are connected. USD and credits remain separate units.
+                Journal balances do not verify external cash. Stripe test sessions and refunds are
+                reconciled in Payments; bank statements and physical inventory feeds are not
+                connected. USD and credits remain separate units.
               </p>
             </div>
           </div>
@@ -490,7 +538,7 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
     rights: 'Review collection rights',
     stock: 'Receive & assess production stock',
     fulfill: 'Record a demonstration shipment',
-    release: 'Release a demo settlement',
+    release: 'Request settlement release review',
     resolve: 'Respond to a support case',
     revoke: 'Revoke active VIA certification',
   };
@@ -536,8 +584,8 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
     if (type === 'release')
       result = await action.run(
         `/ops/settlements/${row.id}/release`,
-        {},
-        'Simulated settlement released. No bank transfer occurred.',
+        { reason: note },
+        'Independent finance approval requested. No payout has occurred.',
       );
     if (type === 'resolve')
       result = await action.run(
@@ -647,8 +695,8 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
           <div className="notice warning">
             <strong>{money(row.amount_cents)} · simulated seller proceeds</strong>
             <p>
-              The order must be fulfilled, with no open support cases. This records a demonstration
-              payout only.
+              The order must be fulfilled, with no open support cases. A different finance reviewer
+              must approve this exact amount before a simulated release.
             </p>
           </div>
         )}
@@ -663,7 +711,7 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
             />
           </label>
         )}
-        {!['release', 'fulfill'].includes(type) && (
+        {type !== 'fulfill' && (
           <label className="field">
             {type === 'resolve' ? 'Response' : 'Evidence & decision notes'}
             <textarea

@@ -1,4 +1,7 @@
 'use client';
+import { SecuritySettings, IdentityAction } from './identity-access';
+import { AccountGate } from './ui';
+import { useSession } from './providers';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useData, type Row } from './providers';
@@ -6,6 +9,7 @@ import { Discover, Marketplace, Collections, ItemDetail, Checkout, Verify } from
 import { Login, MyCollection, Orders, Credits, Activity, Settings, Support } from './account';
 import { Seller, Creator } from './workspaces';
 import { Operations } from './operations';
+import { Channels, ChannelWorkspace, DeveloperTools } from './channels';
 import { Loading, ErrorNotice, Empty } from './ui';
 export function Application({ initialCatalog }: { initialCatalog?: Row }) {
   const path = usePathname(),
@@ -16,7 +20,18 @@ export function Application({ initialCatalog }: { initialCatalog?: Row }) {
     isPending,
     refetch,
   } = useData<Row>('/catalog', true, initialCatalog);
+  const { user } = useSession();
   const parts = path.split('/').filter(Boolean);
+  if (user?.mfa_required || path === '/account/security')
+    return (
+      <AccountGate>
+        <SecuritySettings />
+      </AccountGate>
+    );
+  if (path === '/identity/action') return <IdentityAction />;
+  if (parts[0] === 'channels') return <Channels key={path} id={parts[1]} />;
+  if (path === '/workspace/channels') return <ChannelWorkspace />;
+  if (path === '/workspace/developer') return <DeveloperTools />;
   if (path === '/login') return <Login />;
   if (parts[0] === 'items' && parts[1]) return <ItemDetail key={path} id={parts[1]} />;
   if (parts[0] === 'checkout' && parts[1]) return <Checkout key={path} assetId={parts[1]} />;

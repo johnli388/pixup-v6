@@ -29,6 +29,7 @@ type User = {
   email: string;
   csrf: string;
   is_staff: boolean;
+  mfa_required?: boolean;
   organizations: Organization[];
   staff_permissions: StaffPermission[];
 };

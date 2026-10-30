@@ -1,4 +1,11 @@
 'use client';
+import { CommercialTerms } from './commercial';
+import { IdentitySignIn } from './identity-access';
+import { BillingSettings } from './saas-inventory';
+import { EvidenceWorkspace, ShipmentTimeline } from './evidence-logistics';
+import { ConnectSettings, OrderAdjustments } from './payment-controls';
+import { PrivacySettings } from './privacy-operations';
+import { ChannelOrder } from './channels';
 import { StripePayment } from './payments';
 import { OrganizationSettings } from './organizations';
 import Link from 'next/link';
@@ -51,7 +58,7 @@ export function Login() {
     setBusy(true);
     setError('');
     try {
-      await request(register ? '/auth/register' : '/auth/login', {
+      const signedIn = await request(register ? '/auth/register' : '/auth/login', {
         email,
         password,
         ...(register ? { name } : {}),
@@ -64,7 +71,7 @@ export function Login() {
           ? 'Welcome to PixUP. Your story starts here.'
           : 'Welcome back. Your collection is waiting.',
       );
-      router.push('/');
+      router.push(signedIn.user?.mfa_required ? '/account/security' : '/');
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -97,6 +104,7 @@ export function Login() {
             ? 'Create a personal account to collect and sell.'
             : 'Sign in to your corner of collectible culture.'}
         </p>
+        <IdentitySignIn />
         <form onSubmit={submit}>
           {register && (
             <label className="field">
@@ -363,7 +371,11 @@ function OrderDetail({ id }: { id: string }) {
               <h2>{o.title}</h2>
               <code>{o.serial}</code>
               <p>
-                {o.fulfillment === 'vault' ? 'Vault custody selected' : 'Demo delivery selected'}
+                {o.channel !== 'web'
+                  ? `${o.channel.toUpperCase()} physical fulfillment`
+                  : o.fulfillment === 'vault'
+                    ? 'Vault custody selected'
+                    : 'Demo delivery selected'}
               </p>
               <Link href={`/items/${o.asset_id}`} className="text-link">
                 View collectible <ArrowUpRight size={15} />
@@ -383,7 +395,13 @@ function OrderDetail({ id }: { id: string }) {
             </div>
             <div>
               <dt>Fulfillment</dt>
-              <dd>{o.fulfillment === 'vault' ? 'PixUP vault' : 'Demo shipment'}</dd>
+              <dd>
+                {o.channel !== 'web'
+                  ? o.channel.toUpperCase()
+                  : o.fulfillment === 'vault'
+                    ? 'PixUP vault'
+                    : 'Demo shipment'}
+              </dd>
             </div>
             {o.tracking && (
               <div>
@@ -398,6 +416,10 @@ function OrderDetail({ id }: { id: string }) {
               </div>
             )}
           </dl>
+          <ChannelOrder order={o} />
+          <CommercialTerms snapshot={o.commercial_snapshot} />
+          {o.payment_provider === 'stripe_test' && <OrderAdjustments orderId={o.id} />}
+          {o.fulfillment === 'ship' && o.channel === 'web' && <ShipmentTimeline orderId={o.id} />}
           <ErrorNotice error={action.error} />
           {o.buyer_id === user?.id && o.payment_provider === 'stripe_test' && (
             <StripePayment order={o} />
@@ -436,7 +458,12 @@ function OrderDetail({ id }: { id: string }) {
             )}
           {o.buyer_id === user?.id &&
             o.payment_provider !== 'stripe_test' &&
-            ['paid', 'fulfilled'].includes(o.status) && (
+            ['paid', 'fulfilled'].includes(o.status) &&
+            (o.channel !== 'cvm' || o.channel_fulfillment?.state === 'refund_required') &&
+            (!o.channel_fulfillment ||
+              ['refund_required', 'awaiting_fulfillment'].includes(
+                o.channel_fulfillment.state,
+              )) && (
               <button className="button secondary" onClick={() => setRefund(true)}>
                 Request vault refund
               </button>
@@ -675,8 +702,8 @@ function SettingsInner() {
         <div className="notice">
           <strong>Local demonstration environment</strong>
           <p>
-            Sessions use HTTP-only cookies. Email verification, password recovery, MFA and managed
-            identity are production integration tasks. Do not enter sensitive personal information.
+            Sessions use HTTP-only cookies. Account security provides authenticator enrollment,
+            session controls and configured email/managed sign-in. External providers require setup.
           </p>
         </div>
         <ErrorNotice error={error} />
@@ -698,7 +725,14 @@ function SettingsInner() {
           Sign out / switch demo account
         </button>
       </div>
+      <Link className="button secondary" href="/account/security">
+        Account security
+      </Link>
+      <PrivacySettings />
       <OrganizationSettings />
+      <BillingSettings />
+      <EvidenceWorkspace />
+      <ConnectSettings />
     </>
   );
 }

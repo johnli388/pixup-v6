@@ -1,4 +1,8 @@
 'use client';
+import { CommercialTerms } from './commercial';
+import { ItemPassport } from './item-passport';
+import { PriceReference } from './price-trust';
+import { CatalogDetails } from './saas-inventory';
 import type { PaymentConfiguration } from '../../../packages/domain/contracts';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -190,7 +194,9 @@ export function Marketplace({ catalog }: { catalog: Row }) {
     let rows = catalog.items.filter(
       (a: Row) =>
         (category === 'All' || a.category === category) &&
-        `${a.title} ${a.collection_title} ${a.category}`.toLowerCase().includes(q.toLowerCase()) &&
+        `${a.title} ${a.collection_title} ${a.category} ${Object.values(a.catalog_attributes || {}).join(' ')}`
+          .toLowerCase()
+          .includes(q.toLowerCase()) &&
         (!max || a.price_cents <= Number(max) * 100) &&
         (!onlyPlatform || a.platform_owned),
     );
@@ -376,8 +382,13 @@ export function ItemDetail({ id }: { id: string }) {
           <div className="detail-badges">
             <Badge tone={item.certification === 'verified' ? 'green' : 'neutral'}>
               <ShieldCheck size={14} />
-              {item.certification === 'verified' ? `VIA ${item.grade}` : item.certification}
+              {item.certification === 'verified'
+                ? 'VIA authenticity recorded'
+                : item.certification === 'unverified'
+                  ? 'Not yet VIA assessed'
+                  : item.certification}
             </Badge>
+            <Badge>Condition: {item.grade}</Badge>
             <Badge>
               <Box size={13} />
               {item.custody === 'vault' ? 'Held in PixUP vault' : item.custody}
@@ -404,7 +415,10 @@ export function ItemDetail({ id }: { id: string }) {
                 Manage this collectible <ArrowRight size={17} />
               </Link>
             ) : item.listing_status === 'active' ? (
-              <Link className="button full" href={`/checkout/${id}`}>
+              <Link
+                className="button full"
+                href={item.channel_id ? `/channels/${item.channel_id}` : `/checkout/${id}`}
+              >
                 Make it yours
                 <ArrowRight size={17} />
               </Link>
@@ -434,6 +448,8 @@ export function ItemDetail({ id }: { id: string }) {
       </div>
       <div className="detail-lower">
         <div>
+          {item.passport && <ItemPassport passport={item.passport} />}
+          <CatalogDetails attributes={item.catalog_attributes} />
           <div className="tabs">
             {['Details', 'Provenance', 'Price reference'].map((t) => (
               <button key={t} onClick={() => setTab(t)} className={tab === t ? 'selected' : ''}>
@@ -472,17 +488,7 @@ export function ItemDetail({ id }: { id: string }) {
               ))}
             </div>
           ) : (
-            <div className="notice">
-              <h3>
-                {item.pricing.sufficient
-                  ? 'Completed demo trades'
-                  : 'Not enough verified sales yet'}
-              </h3>
-              <p>
-                {item.pricing.sample_count} completed demo observations. A reference price is not a
-                guaranteed sale price. A calibrated pricing model has not been enabled.
-              </p>
-            </div>
+            <PriceReference data={item.price_reference} />
           )}
         </div>
         <aside className="detail-aside">
@@ -697,6 +703,7 @@ function CheckoutInner({ assetId }: { assetId: string }) {
           </dl>
           {quote && (
             <>
+              <CommercialTerms snapshot={quote.commercial_snapshot} />
               <small className="muted">
                 Quote valid for 10 minutes. Seller fees are deducted from seller proceeds.
               </small>
@@ -763,6 +770,18 @@ export function Verify({ id }: { id: string }) {
               {data.valid ? 'Active demo certificate' : 'Certificate is no longer active'}
             </strong>
             <p>{data.scope}</p>
+            <p>Record signature: {data.integrity?.state?.replaceAll('_', ' ') || 'unsigned'}.</p>
+            {data.integrity?.signed && (
+              <p>
+                Verification key: {data.integrity.key_id}. Assessment status above remains
+                authoritative for current eligibility.
+              </p>
+            )}
+            <p>
+              {data.integrity?.checkpoint
+                ? `Signed checkpoint ${data.integrity.checkpoint.payload.sequence} · ${data.integrity.checkpoint.current_head ? 'covers the current recorded head' : 'new history exists after this checkpoint'}.`
+                : 'No trusted checkpoint covers this record.'}
+            </p>
           </div>
           <Link href={`/items/${data.asset_id}`} className="button secondary">
             See collectible history <ArrowRight size={16} />

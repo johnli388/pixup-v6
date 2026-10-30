@@ -1,0 +1,72 @@
+{
+  "methodology": {
+    "version": "pulserate-pilot-v1",
+    "currency": "USD",
+    "window_days": 90,
+    "fresh_days": 30,
+    "minimum_samples": 5,
+    "minimum_fresh_samples": 3,
+    "maximum_relative_iqr": 1,
+    "estimator": "Median with linearly interpolated quartiles; no automatic outlier deletion.",
+    "cohort": "Explicit finance-curated equivalent variant and exact grade; never category-wide pooling.",
+    "exclusions": [
+      "not_final",
+      "related_party",
+      "not_reviewed",
+      "excluded",
+      "refund",
+      "credit_consideration",
+      "out_of_window",
+      "future",
+      "grade_changed",
+      "eligibility_revoked"
+    ],
+    "calibration": "Synthetic pilot calibration only; market backtesting and approval outstanding."
+  },
+  "scope": "Deterministic synthetic robustness/sufficiency calibration. No market accuracy or statistical coverage claim.",
+  "scenarios": [
+    {
+      "scenario": "stable comparable cohort",
+      "state": "available",
+      "reference_cents": 10000,
+      "expected_cents": 10000,
+      "absolute_error_cents": 0
+    },
+    {
+      "scenario": "one extreme contaminant",
+      "state": "available",
+      "reference_cents": 10000,
+      "expected_cents": 10000,
+      "absolute_error_cents": 0
+    },
+    {
+      "scenario": "insufficient sample",
+      "state": "insufficient_data",
+      "reference_cents": null,
+      "expected_cents": null,
+      "absolute_error_cents": null
+    },
+    {
+      "scenario": "stale cohort",
+      "state": "stale",
+      "reference_cents": null,
+      "expected_cents": null,
+      "absolute_error_cents": null
+    },
+    {
+      "scenario": "incompatible dispersion",
+      "state": "dispersed",
+      "reference_cents": null,
+      "expected_cents": null,
+      "absolute_error_cents": null
+    },
+    {
+      "scenario": "outside observation window",
+      "state": "insufficient_data",
+      "reference_cents": null,
+      "expected_cents": null,
+      "absolute_error_cents": null
+    }
+  ],
+  "passed": true
+}

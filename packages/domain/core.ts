@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { one, type SQL } from '../database/index';
 import { hash } from './security';
+import { assetPaymentHoldSql } from './inventory-holds';
 
 export const id = () => randomUUID();
 export class DomainError extends Error {
@@ -19,6 +20,14 @@ export function check(
   status = 409,
 ): asserts condition {
   if (!condition) throw new DomainError(status, code, message);
+}
+// Call while holding the asset row lock; refund creation uses the same lock.
+export async function assertNoRefund(tx: SQL, assetId: string) {
+  check(
+    !(await one(tx, `SELECT 1 WHERE ${assetPaymentHoldSql('$1')}`, [assetId])),
+    'REFUND_PENDING',
+    'This item is held while its payment, refund, dispute or transfer is reconciled.',
+  );
 }
 export async function journal(
   tx: SQL,

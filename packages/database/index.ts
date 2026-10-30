@@ -1,3 +1,4 @@
+import { contextualDatabase } from './context';
 import { PGlite } from '@electric-sql/pglite';
 import postgres from 'postgres';
 import { readFile } from 'node:fs/promises';
@@ -13,8 +14,22 @@ export interface Database extends SQL {
 
 export async function openDatabase(url?: string, directory?: string): Promise<Database> {
   if (url) {
-    const pool = postgres(url, { max: 10 });
-    return {
+    // The shared SQL API accepts encoded JSON text (as PGlite does). Postgres.js
+    // otherwise JSON-stringifies it again after inferring a json/jsonb parameter,
+    // turning response/payload objects into JSON scalar strings on replay.
+    const pool = postgres(url, {
+      max: 10,
+      types: {
+        json: {
+          to: 114,
+          from: [114, 3802],
+          serialize: (value: unknown) =>
+            typeof value === 'string' ? value : JSON.stringify(value),
+          parse: (value: string) => JSON.parse(value),
+        },
+      },
+    });
+    return contextualDatabase({
       query: async (sql, params) => ({ rows: (await pool.unsafe(sql, params as any)) as any }),
       exec: async (sql) => {
         await pool.unsafe(sql).simple();
@@ -29,11 +44,11 @@ export async function openDatabase(url?: string, directory?: string): Promise<Da
           }),
         ) as Promise<T>,
       close: () => pool.end(),
-    };
+    });
   }
   const db = new PGlite(directory);
   await db.waitReady;
-  return {
+  return contextualDatabase({
     query: (sql, params) => db.query(sql, params),
     exec: async (sql) => {
       await db.exec(sql);
@@ -48,7 +63,7 @@ export async function openDatabase(url?: string, directory?: string): Promise<Da
         }),
       ),
     close: () => db.close(),
-  };
+  });
 }
 
 export async function migrate(db: Database) {
@@ -63,6 +78,15 @@ export async function migrate(db: Database) {
       ['003', '003-media.sql'],
       ['004', '004-plan-alignment.sql'],
       ['005', '005-stripe-checkout.sql'],
+      ['006', '006-payment-recovery.sql'],
+      ['007', '007-channels.sql'],
+      ['008', '008-operational-readiness.sql'],
+      ['009', '009-price-trust.sql'],
+      ['010', '010-saas-inventory.sql'],
+      ['011', '011-evidence-logistics.sql'],
+      ['012', '012-payment-controls.sql'],
+      ['013', '013-identity-access.sql'],
+      ['014', '014-commercial-policy.sql'],
     ]) {
       const found = await tx.query('SELECT version FROM migrations WHERE version=$1', [version]);
       if (!found.rows.length) {

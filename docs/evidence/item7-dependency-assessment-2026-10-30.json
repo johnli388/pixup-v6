@@ -1,0 +1,8 @@
+{
+  "checked_at": "2026-10-30T21:10:21.191Z",
+  "scope": "Production dependency advisories; excludes independent penetration testing",
+  "status": "unavailable",
+  "counts": null,
+  "findings": {},
+  "reason": "Advisory service unavailable or returned an invalid audit response; this is not a clean scan."
+}

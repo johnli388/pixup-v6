@@ -1,11 +1,27 @@
+import { requireEligibility } from '../../../packages/domain/privacy';
+import { consumeApproval } from '../../../packages/domain/finance-approval';
+import { lockChannels, assertChannelFree } from './channel-core';
 import type { Database } from '../../../packages/database/index';
 import { one } from '../../../packages/database/index';
-import { check, id, journal, provenance, audit, notify } from '../../../packages/domain/core';
+import {
+  assertNoRefund,
+  check,
+  id,
+  journal,
+  provenance,
+  audit,
+  notify,
+} from '../../../packages/domain/core';
 import { requireStaff, type Actor } from './auth';
 import { repoolTerms, type StaffPermission } from '../../../packages/domain/contracts';
+import { intakeCaptureGate, noPhysicalIncident } from './logistics';
+import { noPaymentException, noPendingAdjustment } from '../../../packages/domain/payment-control';
 
 export class OperationsService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    private requireCapture = false,
+  ) {}
   async offer(actor: Actor, intakeId: string) {
     const intake = await one(
       this.db,
@@ -28,6 +44,7 @@ export class OperationsService {
   ) {
     requireStaff(actor, 'via');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const intake = await one(tx, 'SELECT * FROM intakes WHERE id=$1 FOR UPDATE', [intakeId]);
       check(
         intake?.kind === 'repool' && intake.status === 'received',
@@ -95,6 +112,7 @@ export class OperationsService {
     data: { expected_version: number; accept: boolean },
   ) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const intake = await one(tx, 'SELECT * FROM intakes WHERE id=$1 FOR UPDATE', [intakeId]);
       check(
         intake?.user_id === actor.id && intake.kind === 'repool',
@@ -145,8 +163,12 @@ export class OperationsService {
   }
   async intake(actor: Actor, data: any) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
+      if (data.kind === 'repool') await requireEligibility(tx, actor.id);
       const a = await one(tx, 'SELECT * FROM assets WHERE id=$1 FOR UPDATE', [data.asset_id]);
       check(a && a.owner_id === actor.id, 'FORBIDDEN', 'You do not own this collectible.', 403);
+      await assertNoRefund(tx, a.id);
+      await assertChannelFree(tx, a.id);
       check(
         !(await one(
           tx,
@@ -175,7 +197,12 @@ export class OperationsService {
         'An intake is already in progress.',
       );
       check(
-        !['shipping', 'delivered', 'quarantine'].includes(a.custody),
+        a.kind === 'specimen',
+        'SEALED_STOCK',
+        'Sealed stock requires its channel return process.',
+      );
+      check(
+        !['shipping', 'delivered', 'quarantine', 'device'].includes(a.custody),
         'CUSTODY_INELIGIBLE',
         'Resolve the custody exception before intake.',
       );
@@ -233,6 +260,7 @@ export class OperationsService {
     const canIntakes = can('warehouse') || can('via');
     return {
       permissions: actor.staff_permissions,
+      physical_capture_required: this.requireCapture,
       collections: can('rights')
         ? (
             await this.db.query(
@@ -249,21 +277,21 @@ export class OperationsService {
       intakes: canIntakes
         ? (
             await this.db.query(
-              'SELECT i.*,a.title,a.artwork,a.serial,a.custody,a.grade,u.name AS owner_name FROM intakes i JOIN assets a ON a.id=i.asset_id JOIN users u ON u.id=i.user_id ORDER BY i.created_at DESC',
+              'SELECT i.*,a.title,a.artwork,a.serial,a.custody,a.grade,u.name AS owner_name,(SELECT id FROM physical_captures WHERE intake_id=i.id) AS capture_id FROM intakes i JOIN assets a ON a.id=i.asset_id JOIN users u ON u.id=i.user_id ORDER BY i.created_at DESC',
             )
           ).rows
         : [],
       settlements: can('finance')
         ? (
             await this.db.query(
-              'SELECT s.*,a.title,o.status AS order_status FROM settlements s JOIN orders o ON o.id=s.order_id JOIN assets a ON a.id=o.asset_id ORDER BY s.created_at DESC',
+              'SELECT s.*,a.title,o.status AS order_status,o.payment_provider FROM settlements s JOIN orders o ON o.id=s.order_id JOIN assets a ON a.id=o.asset_id ORDER BY s.created_at DESC',
             )
           ).rows
         : [],
       orders: can('warehouse')
         ? (
             await this.db.query(
-              "SELECT o.id,o.asset_id,o.status,o.fulfillment,o.shipping_address,o.tracking,o.created_at,a.title,a.artwork FROM orders o JOIN assets a ON a.id=o.asset_id WHERE status IN ('paid','fulfilled') ORDER BY o.created_at DESC",
+              "SELECT o.id,o.asset_id,o.status,o.fulfillment,o.shipping_address,o.tracking,o.created_at,a.title,a.artwork,EXISTS(SELECT 1 FROM shipments WHERE order_id=o.id) AS tracked FROM orders o JOIN assets a ON a.id=o.asset_id WHERE status IN ('paid','fulfilled') ORDER BY o.created_at DESC",
             )
           ).rows
         : [],
@@ -302,6 +330,7 @@ export class OperationsService {
   async reviewCollection(actor: Actor, cid: string, data: any) {
     requireStaff(actor, 'rights');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const c = await one(tx, 'SELECT * FROM collections WHERE id=$1 FOR UPDATE', [cid]);
       check(c, 'NOT_FOUND', 'Collection not found.', 404);
       check(c.status === 'submitted', 'INVALID_STATE', 'This collection is not awaiting review.');
@@ -330,6 +359,7 @@ export class OperationsService {
     requireStaff(actor, 'warehouse');
     requireStaff(actor, 'via');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const c = await one(tx, 'SELECT * FROM collections WHERE id=$1 FOR UPDATE', [cid]);
       check(
         c?.status === 'approved',
@@ -404,8 +434,10 @@ export class OperationsService {
   async intakeAction(actor: Actor, intakeId: string, data: any) {
     requireStaff(actor, ['receive', 'return'].includes(data.action) ? 'warehouse' : 'via');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const intake = await one(tx, 'SELECT * FROM intakes WHERE id=$1 FOR UPDATE', [intakeId]);
       check(intake, 'NOT_FOUND', 'Intake not found.', 404);
+      await intakeCaptureGate(tx, intake, actor, data.action, this.requireCapture);
       check(
         intake.user_id !== actor.id,
         'SELF_REVIEW',
@@ -579,7 +611,9 @@ export class OperationsService {
   async revoke(actor: Actor, assetId: string, note: string) {
     requireStaff(actor, 'via');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const a = await one(tx, 'SELECT * FROM assets WHERE id=$1 FOR UPDATE', [assetId]);
+      await assertChannelFree(tx, assetId);
       check(a, 'NOT_FOUND', 'Asset not found.', 404);
       check(
         !(await one(tx, "SELECT id FROM listings WHERE asset_id=$1 AND status='reserved'", [
@@ -614,9 +648,10 @@ export class OperationsService {
       return { ok: true };
     });
   }
-  async releaseSettlement(actor: Actor, sid: string) {
+  async releaseSettlement(actor: Actor, sid: string, approvalId?: string) {
     requireStaff(actor, 'finance');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const reference = await one(tx, 'SELECT order_id FROM settlements WHERE id=$1', [sid]);
       check(reference, 'NOT_FOUND', 'Settlement not found.', 404);
       const o = await one(tx, 'SELECT * FROM orders WHERE id=$1 FOR UPDATE', [reference.order_id]);
@@ -627,6 +662,16 @@ export class OperationsService {
         'Stripe test seller payouts require a separate Connect integration; simulated release is disabled.',
       );
       check(s?.status === 'held', 'INVALID_STATE', 'This settlement is not held.');
+      await noPaymentException(tx, o!.id);
+      await noPendingAdjustment(tx, o!.id);
+      await noPhysicalIncident(tx, o!.asset_id);
+      check(
+        !(await one(tx, "SELECT id FROM shipments WHERE order_id=$1 AND state<>'delivered'", [
+          o!.id,
+        ])),
+        'DELIVERY_REQUIRED',
+        'Confirmed delivery without a shipment exception is required.',
+      );
       check(
         o?.status === 'fulfilled',
         'FULFILLMENT_REQUIRED',
@@ -639,6 +684,12 @@ export class OperationsService {
         'DISPUTE_OPEN',
         'Resolve open support cases before settlement.',
       );
+      await consumeApproval(tx, actor.id, approvalId, 'settlement_release', sid, {
+        settlement_id: s.id,
+        order_id: s.order_id,
+        seller_id: s.seller_id,
+        amount_cents: s.amount_cents,
+      });
       await journal(tx, `payout:${sid}`, 'USD', 'Simulated seller payout', [
         [`seller_payable:${s.seller_id}`, s.amount_cents],
         ['demo_psp_clearing', -s.amount_cents],
@@ -651,6 +702,13 @@ export class OperationsService {
   async fulfill(actor: Actor, oid: string, tracking: string) {
     requireStaff(actor, 'warehouse');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
+      check(
+        !this.requireCapture &&
+          !(await one(tx, 'SELECT id FROM shipments WHERE order_id=$1', [oid])),
+        'TRACKED_SHIPMENT_REQUIRED',
+        'Use the tracked shipment workflow; label creation is not delivery.',
+      );
       const o = await one(tx, 'SELECT * FROM orders WHERE id=$1 FOR UPDATE', [oid]);
       check(
         o?.status === 'paid' && o.fulfillment === 'ship',
@@ -658,6 +716,7 @@ export class OperationsService {
         'Order is not awaiting shipment.',
       );
       const a = await one(tx, 'SELECT * FROM assets WHERE id=$1 FOR UPDATE', [o.asset_id]);
+      await assertNoRefund(tx, o.asset_id);
       check(
         a && a.owner_id === o.buyer_id && a.custody === 'vault',
         'CUSTODY_CHANGED',
@@ -699,6 +758,7 @@ export class OperationsService {
   }
   async support(actor: Actor, data: any) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       if (data.order_id)
         check(
           await one(
@@ -721,6 +781,7 @@ export class OperationsService {
   async resolveCase(actor: Actor, cid: string, response: string) {
     requireStaff(actor, 'support');
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       check(
         await one(tx, 'SELECT id FROM support_cases WHERE id=$1 FOR UPDATE', [cid]),
         'NOT_FOUND',
@@ -737,6 +798,7 @@ export class OperationsService {
   }
   async worker() {
     await this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const events = (
         await tx.query(
           'SELECT * FROM outbox WHERE processed_at IS NULL ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED',

@@ -1,8 +1,24 @@
+import { requireEligibility } from '../../../packages/domain/privacy';
+import { lockChannels, assertChannelFree } from './channel-core';
 import type { Database, SQL } from '../../../packages/database/index';
 import { one } from '../../../packages/database/index';
-import { check, id, provenance, audit } from '../../../packages/domain/core';
+import { assertNoRefund, check, id, provenance, audit } from '../../../packages/domain/core';
 import type { Actor } from './auth';
 import { checkArtwork } from './media';
+import { itemPassportSchema } from '../../../packages/domain/contracts';
+import { PricingService } from './pricing';
+import { TrustService } from './trust';
+import { attributeSales } from '../../../packages/domain/attribution';
+import { consumeUsage, personalWorkspace, workspaceMember } from '../../../packages/domain/saas';
+import { catalogAttributes } from '../../../packages/domain/catalog-attributes';
+import {
+  collectionPublishedSql,
+  visibleAssetSql,
+} from '../../../packages/domain/catalog-visibility';
+
+const staffCanViewStock = (actor?: Actor | null) =>
+  !!actor?.is_staff &&
+  actor.staff_permissions.some((p) => ['rights', 'warehouse', 'via'].includes(p));
 
 export const assetView = `SELECT a.*,c.title AS collection_title,c.edition_size,c.issuance_mode,
   l.id AS listing_id,l.price_cents,l.status AS listing_status,
@@ -17,33 +33,28 @@ export class CatalogService {
   async browse() {
     const items = (
       await this.db.query(
-        `${assetView} WHERE l.status IN ('active','reserved') AND (c.status='published' OR c.id IS NULL) ORDER BY a.created_at,a.edition_number`,
+        `${assetView} WHERE a.kind='specimen' AND NOT EXISTS(SELECT 1 FROM channel_allocations ca WHERE ca.asset_id=a.id AND ca.state<>'closed') AND l.status IN ('active','reserved') AND ${collectionPublishedSql} ORDER BY a.created_at,a.edition_number`,
       )
     ).rows;
     const collections = (
       await this.db
         .query(`SELECT c.id,c.title,c.description,c.category,c.artwork,c.edition_size,c.issuance_mode,o.name AS creator_name,
-      (SELECT count(*)::int FROM assets a JOIN listings l ON l.asset_id=a.id AND l.status='active' WHERE a.collection_id=c.id) AS available
+      (SELECT count(*)::int FROM assets a JOIN listings l ON l.asset_id=a.id AND l.status='active' WHERE a.collection_id=c.id AND NOT EXISTS(SELECT 1 FROM channel_allocations ca WHERE ca.asset_id=a.id AND ca.state<>'closed')) AS available
       FROM collections c JOIN organizations o ON o.id=c.org_id WHERE c.status='published' ORDER BY c.created_at`)
     ).rows;
-    return { items: items.map(({ owner_id, ...item }) => item), collections, mode: 'demo' };
+    return {
+      items: items.map(({ owner_id, inventory_org_id, ...item }) => item),
+      collections,
+      mode: 'demo',
+    };
   }
   async item(assetId: string, actor?: Actor | null) {
-    const item = await one(this.db, `${assetView} WHERE a.id=$1`, [assetId]);
+    const item = await one(this.db, `${assetView} WHERE a.id=$3 AND ${visibleAssetSql}`, [
+      actor?.id || '',
+      staffCanViewStock(actor),
+      assetId,
+    ]);
     check(item, 'NOT_FOUND', 'Collectible not found.', 404);
-    const c = item.collection_id
-      ? await one(this.db, 'SELECT status FROM collections WHERE id=$1', [item.collection_id])
-      : null;
-    check(
-      item.owner_id === actor?.id ||
-        (actor?.is_staff &&
-          actor.staff_permissions.some((p) => ['rights', 'warehouse', 'via'].includes(p))) ||
-        c?.status === 'published' ||
-        item.listing_status,
-      'NOT_FOUND',
-      'Collectible not found.',
-      404,
-    );
     const history = (
       await this.db.query(
         'SELECT id,type,description,created_at,hash,previous_hash,sequence FROM provenance_events WHERE asset_id=$1 ORDER BY sequence DESC',
@@ -57,17 +68,44 @@ export class CatalogService {
         [item.collection_id, item.grade],
       )
     ).rows;
-    const { owner_id, ...publicItem } = item;
+    const { owner_id, inventory_org_id, ...publicItem } = item;
+    const channel = await one(
+      this.db,
+      "SELECT context_id FROM channel_allocations WHERE asset_id=$1 AND state<>'closed'",
+      [assetId],
+    );
+    const assessment = await one(
+      this.db,
+      `SELECT s.created_at,c.id,c.status FROM assessments s
+      LEFT JOIN certificates c ON c.assessment_id=s.id WHERE s.asset_id=$1 ORDER BY s.created_at DESC,s.id DESC LIMIT 1`,
+      [assetId],
+    );
+    const passport = itemPassportSchema.parse({
+      asset_id: item.id,
+      serial: item.serial,
+      registered_at: new Date(item.created_at).toISOString(),
+      issuance_mode: item.issuance_mode || null,
+      registration_scope: 'Registry entry only; not proof of rights or physical authenticity.',
+      authenticity: item.certification,
+      condition_grade: item.grade,
+      assessed_at: assessment ? new Date(assessment.created_at).toISOString() : null,
+      certificate: assessment?.id ? { id: assessment.id, status: assessment.status } : null,
+      custody: item.custody,
+      simulation: true,
+    });
     return {
       ...publicItem,
+      channel_id: channel?.context_id || null,
       is_owner: owner_id === actor?.id,
       history,
+      passport,
       pricing: {
         sample_count: sales.length,
         sufficient: sales.length >= 5,
         observations: sales,
         label: 'Demo completed sales only; different specimens may not be comparable.',
       },
+      price_reference: await new PricingService(this.db).reference(assetId),
     };
   }
   async collection(cid: string) {
@@ -81,24 +119,26 @@ export class CatalogService {
       ...collection,
       items: (
         await this.db.query(
-          `${assetView} WHERE a.collection_id=$1 AND l.status IN ('active','reserved')`,
+          `${assetView} WHERE a.collection_id=$1 AND NOT EXISTS(SELECT 1 FROM channel_allocations ca WHERE ca.asset_id=a.id AND ca.state<>'closed') AND l.status IN ('active','reserved')`,
           [cid],
         )
-      ).rows.map(({ owner_id, ...item }) => item),
+      ).rows.map(({ owner_id, inventory_org_id, ...item }) => item),
     };
   }
   async verify(cid: string) {
     const cert = await one(
       this.db,
       `SELECT c.id,c.status,c.created_at,a.id AS asset_id,a.title,a.serial,a.artwork,a.certification,a.custody,s.grade,s.result,s.created_at AS assessed_at
-      FROM certificates c JOIN assets a ON a.id=c.asset_id JOIN assessments s ON s.id=c.assessment_id WHERE c.id=$1`,
+      FROM certificates c JOIN assets a ON a.id=c.asset_id JOIN assessments s ON s.id=c.assessment_id WHERE c.id=$1 AND ${collectionPublishedSql}`,
       [cid],
     );
     check(cert, 'NOT_FOUND', 'Certificate not found.', 404);
     return {
       ...cert,
-      scope: 'Demonstration record. No real physical authentication or external signature service.',
+      scope:
+        'Demonstration assessment. Cryptographic signatures verify record integrity, not physical authenticity, legal rights or ownership.',
       valid: cert.status === 'active' && cert.certification === 'verified',
+      integrity: await new TrustService(this.db).verification(cid),
     };
   }
   async portfolio(actor: Actor) {
@@ -110,10 +150,10 @@ export class CatalogService {
       ).rows,
       saved: (
         await this.db.query(
-          `${assetView} JOIN saved_items s ON s.asset_id=a.id WHERE s.user_id=$1`,
-          [actor.id],
+          `${assetView} JOIN saved_items s ON s.asset_id=a.id WHERE s.user_id=$1 AND ${visibleAssetSql}`,
+          [actor.id, staffCanViewStock(actor)],
         )
-      ).rows,
+      ).rows.map(({ owner_id, inventory_org_id, ...item }) => item),
       intakes: (
         await this.db.query(
           'SELECT i.*,a.title,a.artwork FROM intakes i JOIN assets a ON a.id=i.asset_id WHERE i.user_id=$1 ORDER BY i.created_at DESC',
@@ -123,13 +163,13 @@ export class CatalogService {
     };
   }
   async save(actor: Actor, assetId: string, saved: boolean) {
-    await this.item(assetId, actor);
-    if (saved)
+    if (saved) {
+      await this.item(assetId, actor);
       await this.db.query(
         'INSERT INTO saved_items(user_id,asset_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
         [actor.id, assetId],
       );
-    else
+    } else
       await this.db.query('DELETE FROM saved_items WHERE user_id=$1 AND asset_id=$2', [
         actor.id,
         assetId,
@@ -161,22 +201,29 @@ export class CatalogService {
     ).rows;
     const sales = (
       await this.db.query(
-        `SELECT o.id,o.total_cents,o.status,o.created_at,a.title,c.issuance_mode FROM orders o JOIN assets a ON a.id=o.asset_id JOIN collections c ON c.id=a.collection_id WHERE c.org_id=$1 ORDER BY o.created_at DESC`,
+        `SELECT o.id,o.total_cents,o.status,o.created_at,a.title,c.issuance_mode,c.id AS collection_id,c.title AS collection_title,
+        (o.buyer_id=o.seller_id OR EXISTS(SELECT 1 FROM memberships b JOIN memberships s ON s.org_id=b.org_id WHERE b.user_id=o.buyer_id AND s.user_id=o.seller_id)) AS related_party,
+        (EXISTS(SELECT 1 FROM payment_refunds f WHERE f.order_id=o.id AND f.status NOT IN ('failed','canceled')) OR EXISTS(SELECT 1 FROM payment_adjustments r WHERE r.order_id=o.id AND r.state NOT IN ('failed','canceled')) OR EXISTS(SELECT 1 FROM provider_disputes d WHERE d.order_id=o.id)) AS refund
+        FROM orders o JOIN assets a ON a.id=o.asset_id JOIN collections c ON c.id=a.collection_id WHERE c.org_id=$1 ORDER BY o.created_at DESC`,
         [org],
       )
     ).rows;
     return {
       collections,
       sales,
+      attribution: attributeSales(sales),
       attribution_note:
         'Circulation is recorded separately from earnings. IFCI-based payments are not enabled.',
     };
   }
   async createCollection(actor: Actor, data: any) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       await this.member(tx, actor, data.org_id, true);
+      await requireEligibility(tx, actor.id);
       await checkArtwork(tx, actor, data.artwork);
       const cid = id();
+      await consumeUsage(tx, data.org_id, 'collection_drafts', cid);
       await tx.query(
         'INSERT INTO collections(id,org_id,title,description,category,edition_size,rights_evidence,artwork) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
         [
@@ -196,9 +243,11 @@ export class CatalogService {
   }
   async collectionAction(actor: Actor, cid: string, action: string, data: any) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const c = await one(tx, 'SELECT * FROM collections WHERE id=$1 FOR UPDATE', [cid]);
       check(c, 'NOT_FOUND', 'Collection not found.', 404);
       await this.member(tx, actor, c.org_id, true);
+      await requireEligibility(tx, actor.id);
       if (action === 'save') {
         check(
           ['draft', 'changes_requested'].includes(c.status),
@@ -230,6 +279,7 @@ export class CatalogService {
           'STOCK_NOT_READY',
           'No approved stock is ready.',
         );
+        await consumeUsage(tx, c.org_id, 'listing_creations', `collection:${cid}`, stock.length);
         for (const a of stock) {
           check(
             a.certification === 'verified' && a.custody === 'vault',
@@ -249,8 +299,19 @@ export class CatalogService {
   }
   async createAsset(actor: Actor, data: any) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
+      await requireEligibility(tx, actor.id);
       await checkArtwork(tx, actor, data.artwork);
       const aid = id();
+      const org = data.org_id || (await personalWorkspace(tx, actor.id));
+      await workspaceMember(tx, actor.id, org, true);
+      const attributes = catalogAttributes.parse(data.attributes || { category: data.category });
+      check(
+        attributes.category === data.category,
+        'CATEGORY_MISMATCH',
+        'Structured attributes must match the registered category.',
+      );
+      await consumeUsage(tx, org, 'asset_registrations', aid);
       await tx.query(
         'INSERT INTO assets(id,owner_id,title,category,serial,artwork,description) VALUES ($1,$2,$3,$4,$5,$6,$7)',
         [
@@ -262,6 +323,15 @@ export class CatalogService {
           data.artwork,
           data.description,
         ],
+      );
+      await tx.query('UPDATE assets SET inventory_org_id=$2,catalog_attributes=$3 WHERE id=$1', [
+        aid,
+        data.org_id || null,
+        JSON.stringify(attributes),
+      ]);
+      await tx.query(
+        'INSERT INTO catalog_revisions(id,asset_id,attributes,actor_id) VALUES ($1,$2,$3,$4)',
+        [id(), aid, JSON.stringify(attributes), actor.id],
       );
       await provenance(
         tx,
@@ -275,10 +345,28 @@ export class CatalogService {
   }
   async list(actor: Actor, assetId: string, price: number) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
+      await requireEligibility(tx, actor.id);
       const asset = await one(tx, 'SELECT * FROM assets WHERE id=$1 FOR UPDATE', [assetId]);
-      check(asset && asset.owner_id === actor.id, 'FORBIDDEN', 'You do not own this item.', 403);
+      check(asset, 'NOT_FOUND', 'Item not found.', 404);
+      if (asset.owner_id !== actor.id) {
+        check(asset.inventory_org_id, 'FORBIDDEN', 'You do not have inventory authority.', 403);
+        await workspaceMember(tx, actor.id, asset.inventory_org_id, true);
+      }
+      await requireEligibility(tx, asset.owner_id);
+      await assertNoRefund(tx, assetId);
+      await assertChannelFree(tx, assetId);
       check(
-        asset.custody === 'vault' && asset.certification === 'verified',
+        await one(tx, `SELECT a.id FROM assets a WHERE a.id=$1 AND ${collectionPublishedSql}`, [
+          assetId,
+        ]),
+        'COLLECTION_NOT_PUBLISHED',
+        'Publish the approved collection before listing its stock individually.',
+      );
+      check(
+        asset.kind === 'specimen' &&
+          asset.custody === 'vault' &&
+          asset.certification === 'verified',
         'INELIGIBLE',
         'VIA certification and vault custody are required.',
       );
@@ -310,9 +398,12 @@ export class CatalogService {
         'This item already has an active listing.',
       );
       const lid = id();
+      const org = asset.inventory_org_id || (await personalWorkspace(tx, asset.owner_id));
+      if (asset.inventory_org_id) await workspaceMember(tx, actor.id, org, true);
+      await consumeUsage(tx, org, 'listing_creations', lid);
       await tx.query(
         'INSERT INTO listings(id,asset_id,seller_id,price_cents) VALUES ($1,$2,$3,$4)',
-        [lid, assetId, actor.id, price],
+        [lid, assetId, asset.owner_id, price],
       );
       await provenance(tx, assetId, actor.id, 'listed', 'Listed for fixed-price sale.');
       return { id: lid };
@@ -320,13 +411,22 @@ export class CatalogService {
   }
   async withdrawListing(actor: Actor, listingId: string) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const listing = await one(tx, 'SELECT * FROM listings WHERE id=$1 FOR UPDATE', [listingId]);
-      check(listing?.seller_id === actor.id, 'FORBIDDEN', 'This listing is not yours.', 403);
+      check(listing, 'NOT_FOUND', 'Listing not found.', 404);
+      if (listing.seller_id !== actor.id) {
+        const a = await one(tx, 'SELECT inventory_org_id FROM assets WHERE id=$1', [
+          listing.asset_id,
+        ]);
+        check(a?.inventory_org_id, 'FORBIDDEN', 'This listing is not yours.', 403);
+        await workspaceMember(tx, actor.id, a.inventory_org_id, true);
+      }
       check(
         listing.status === 'active',
         'INVALID_STATE',
         'Reserved or sold listings cannot be withdrawn.',
       );
+      await assertChannelFree(tx, listing.asset_id);
       await tx.query("UPDATE listings SET status='withdrawn' WHERE id=$1", [listingId]);
       await audit(tx, actor.id, 'listing.withdrawn', listingId);
       return { ok: true };

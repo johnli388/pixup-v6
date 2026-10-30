@@ -1,5 +1,5 @@
 'use client';
-import type { PaymentStatus } from '../../../packages/domain/contracts';
+import type { PaymentStatus, RefundStatus } from '../../../packages/domain/contracts';
 import { useEffect, useState } from 'react';
 import { useSession, useAction, type Row } from './providers';
 import { ErrorNotice } from './ui';
@@ -8,9 +8,10 @@ export function StripePayment({ order }: { order: Row }) {
   const { request, refresh } = useSession();
   const action = useAction();
   const [status, setStatus] = useState(''),
+    [refund, setRefund] = useState<RefundStatus | null>(null),
     [error, setError] = useState<string | Error>('');
   useEffect(() => {
-    if (order.status !== 'pending_payment') return;
+    if (order.status === 'canceled') return;
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
@@ -24,8 +25,9 @@ export function StripePayment({ order }: { order: Row }) {
         );
         if (!active) return;
         setStatus(payment.payment_status);
+        setRefund(payment.refund);
         setError('');
-        if (payment.status !== 'pending_payment') await refresh();
+        if (payment.status !== order.status) await refresh();
       } catch (e) {
         if (active) setError(e instanceof Error ? e : 'Payment status is temporarily unavailable.');
       }
@@ -62,14 +64,14 @@ export function StripePayment({ order }: { order: Row }) {
           <div className="button-row">
             <button
               className="button"
-              disabled={action.busy || status === 'requires_review'}
+              disabled={action.busy || status === 'requires_review' || !!refund}
               onClick={() => void resume()}
             >
               Continue to Stripe Checkout
             </button>
             <button
               className="button secondary"
-              disabled={action.busy || status === 'requires_review'}
+              disabled={action.busy || status === 'requires_review' || !!refund}
               onClick={() =>
                 void action.run(
                   `/orders/${order.id}/cancel-payment`,
@@ -89,8 +91,21 @@ export function StripePayment({ order }: { order: Row }) {
       )}
       {['paid', 'fulfilled'].includes(order.status) && (
         <p>
-          Stripe confirmed this test payment. Refunds and seller payouts require support
-          reconciliation; local demo refunds are disabled for Stripe orders.
+          Stripe confirmed this test payment. Contact support to request an eligible full vault
+          refund. Finance confirms the provider outcome before restoring credits or ownership.
+          Seller payouts remain unavailable.
+        </p>
+      )}
+      {refund && (
+        <p role="status">
+          <strong>Refund: {refund.status.replaceAll('_', ' ')}</strong> ·{' '}
+          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+            refund.amount_cents / 100,
+          )}{' '}
+          test cash.
+          {refund.status === 'succeeded'
+            ? ' Original credits have been restored.'
+            : ' Keep this order reference for support. No additional payment is needed.'}
         </p>
       )}
     </div>

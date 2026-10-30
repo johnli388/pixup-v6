@@ -1,3 +1,4 @@
+import { withDatabaseActor } from '../../../packages/database/context';
 import { randomBytes } from 'node:crypto';
 import type { Database } from '../../../packages/database/index';
 import { one } from '../../../packages/database/index';
@@ -10,21 +11,35 @@ export type Actor = {
   name: string;
   is_staff: boolean;
   csrf: string;
+  mfa_required?: boolean;
+  mfa_verified_at?: string | null;
+  reauthenticated_at?: string;
+  auth_method?: string;
+  email_verified_at?: string | null;
   organizations: Organization[];
   staff_permissions: StaffPermission[];
 };
 
 export class AuthService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    public staffMfaRequired = false,
+  ) {}
   async session(token?: string): Promise<Actor | null> {
     if (!token) return null;
     const user = await one(
       this.db,
-      `SELECT u.id,u.email,u.name,u.is_staff,s.csrf_token AS csrf FROM sessions s
-      JOIN users u ON u.id=s.user_id WHERE token_hash=$1 AND expires_at>now()`,
+      `SELECT u.id,u.email,u.name,u.is_staff,u.email_verified_at,s.csrf_token AS csrf,s.mfa_verified_at,s.reauthenticated_at,s.auth_method FROM sessions s
+      JOIN users u ON u.id=s.user_id WHERE token_hash=$1 AND expires_at>now() AND u.closed_at IS NULL`,
       [hash(token)],
     );
     if (!user) return null;
+    const factor = await one(this.db, 'SELECT enabled_at FROM authenticators WHERE user_id=$1', [
+      user.id,
+    ]);
+    user.mfa_required =
+      !!(factor?.enabled_at || (user.is_staff && this.staffMfaRequired)) &&
+      (!user.mfa_verified_at || Date.parse(user.mfa_verified_at) < Date.now() - 12 * 3600000);
     user.staff_permissions = user.is_staff
       ? (
           await this.db.query(
@@ -34,22 +49,46 @@ export class AuthService {
         ).rows.map((p) => p.permission)
       : [];
     user.organizations = (
-      await this.db.query(
-        'SELECT o.*,m.role FROM organizations o JOIN memberships m ON m.org_id=o.id WHERE m.user_id=$1 ORDER BY o.id',
-        [user.id],
+      await withDatabaseActor(user.id, () =>
+        this.db.query(
+          'SELECT o.*,m.role FROM organizations o JOIN memberships m ON m.org_id=o.id WHERE m.user_id=$1 ORDER BY o.id',
+          [user.id],
+        ),
       )
     ).rows;
     return user as Actor;
   }
   async login(email: string, password: string) {
-    const user = await one(this.db, 'SELECT * FROM users WHERE email=$1', [email.toLowerCase()]);
+    const key = hash(email.toLowerCase());
+    const attempt = await one(
+      this.db,
+      `INSERT INTO auth_attempts(key) VALUES ($1) ON CONFLICT(key) DO UPDATE SET
+      attempts=CASE WHEN auth_attempts.window_started<now()-interval '15 minutes' THEN 1 ELSE auth_attempts.attempts+1 END,
+      window_started=CASE WHEN auth_attempts.window_started<now()-interval '15 minutes' THEN now() ELSE auth_attempts.window_started END RETURNING attempts`,
+      [key],
+    );
+    check(
+      attempt!.attempts <= 20,
+      'AUTH_RATE_LIMIT',
+      'Too many sign-in attempts. Try again in 15 minutes.',
+      429,
+    );
+    const user = await one(this.db, 'SELECT * FROM users WHERE email=$1 AND closed_at IS NULL', [
+      email.toLowerCase(),
+    ]);
     // Run scrypt for unknown accounts too, limiting simple timing disclosure.
     const valid = await passwordMatches(
       password,
       user?.password_hash || '00000000000000000000000000000000:' + '00'.repeat(64),
     );
-    check(user && valid, 'INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
-    return this.createSession(user.id);
+    check(
+      user && valid && user.local_login_enabled,
+      'INVALID_CREDENTIALS',
+      'Email or password is incorrect.',
+      401,
+    );
+    await this.db.query('DELETE FROM auth_attempts WHERE key=$1', [key]);
+    return this.createSession(user.id, 'password', user.password_hash);
   }
   async register(name: string, email: string, password: string) {
     const encoded = await passwordHash(password);
@@ -78,12 +117,23 @@ export class AuthService {
     });
     return this.createSession(uid);
   }
-  private async createSession(uid: string) {
+  async createSession(uid: string, method = 'password', expectedPassword?: string) {
     const token = randomBytes(32).toString('hex');
-    await this.db.query(
-      "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at) VALUES ($1,$2,$3,now()+interval '7 days')",
-      [hash(token), uid, randomBytes(24).toString('hex')],
-    );
+    await this.db.transaction(async (tx) => {
+      const u = await one(tx, 'SELECT * FROM users WHERE id=$1 AND closed_at IS NULL FOR UPDATE', [
+        uid,
+      ]);
+      check(
+        u && (!expectedPassword || (u.password_hash === expectedPassword && u.local_login_enabled)),
+        'INVALID_CREDENTIALS',
+        'Sign in again.',
+        401,
+      );
+      await tx.query(
+        "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at,auth_method) VALUES ($1,$2,$3,now()+interval '7 days',$4)",
+        [hash(token), uid, randomBytes(24).toString('hex'), method],
+      );
+    });
     return { token, user: await this.session(token) };
   }
   async logout(token: string) {
@@ -95,6 +145,7 @@ export function requireUser(actor: Actor | null | undefined): Actor {
   return actor;
 }
 export function requireStaff(actor: Actor, permission?: StaffPermission) {
+  check(!actor.mfa_required, 'MFA_REQUIRED', 'Complete account authentication first.', 403);
   check(actor.is_staff, 'FORBIDDEN', 'This action requires an operations account.', 403);
   if (permission)
     check(

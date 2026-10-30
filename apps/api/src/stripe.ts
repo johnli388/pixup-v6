@@ -1,6 +1,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { check, DomainError } from '../../../packages/domain/core';
+import {
+  paymentSnapshot,
+  providerRefundSnapshot,
+  disputeSnapshot,
+  recipientSnapshot,
+  transferSnapshot,
+} from './stripe-control-contracts';
 
 export const stripeSessionSchema = z.object({
   id: z.string().startsWith('cs_test_'),
@@ -16,6 +23,15 @@ export const stripeSessionSchema = z.object({
 });
 export type StripeSession = z.infer<typeof stripeSessionSchema>;
 export type SessionPayload = Record<string, string>;
+export const stripeRefundSchema = z.object({
+  id: z.string().startsWith('re_'),
+  amount: z.number().int().nonnegative(),
+  currency: z.string(),
+  payment_intent: z.string(),
+  metadata: z.object({ order_id: z.string(), refund_id: z.string() }),
+  status: z.enum(['pending', 'requires_action', 'succeeded', 'failed', 'canceled']),
+});
+export type StripeRefund = z.infer<typeof stripeRefundSchema>;
 export function checkoutPayload(
   orderId: string,
   totalCents: number,
@@ -39,12 +55,19 @@ export function checkoutPayload(
   };
 }
 export interface CheckoutProvider {
+  identity?(): Promise<string>;
   create(payload: SessionPayload, key: string): Promise<StripeSession>;
   retrieve(id: string): Promise<StripeSession>;
   expire(id: string): Promise<StripeSession>;
+  refund?(payload: SessionPayload, key: string): Promise<StripeRefund>;
+  retrieveRefund?(id: string): Promise<StripeRefund>;
 }
 export class StripeCheckoutProvider implements CheckoutProvider {
-  constructor(private secret: string) {
+  private account?: string;
+  constructor(
+    private secret: string,
+    private expectedAccount?: string,
+  ) {
     check(
       /^(sk|rk)_test_/.test(secret),
       'STRIPE_TEST_KEY_REQUIRED',
@@ -52,10 +75,65 @@ export class StripeCheckoutProvider implements CheckoutProvider {
       500,
     );
   }
-  private async call(path: string, payload?: SessionPayload, key?: string): Promise<StripeSession> {
+  async identity() {
+    if (!this.account) {
+      const a = z.object({ id: z.string().startsWith('acct_') }).parse(await this.call('/account'));
+      check(
+        !this.expectedAccount || this.expectedAccount === a.id,
+        'PROVIDER_ACCOUNT_MISMATCH',
+        'Configured Stripe account does not match this credential.',
+        503,
+      );
+      this.account = a.id;
+    }
+    return this.account;
+  }
+  async payment(id: string) {
+    const p = paymentSnapshot.parse(
+      await this.call(
+        `/payment_intents/${encodeURIComponent(id)}?expand[]=latest_charge.balance_transaction`,
+      ),
+    );
+    const r = z
+      .object({ data: z.array(providerRefundSnapshot), has_more: z.boolean() })
+      .parse(await this.call(`/refunds?payment_intent=${encodeURIComponent(id)}&limit=100`));
+    check(
+      !r.has_more,
+      'RECONCILIATION_LIMIT',
+      'This payment requires a paginated finance review.',
+      409,
+    );
+    return { ...p, refunds: r.data };
+  }
+  async dispute(id: string) {
+    return disputeSnapshot.parse(await this.call(`/disputes/${encodeURIComponent(id)}`));
+  }
+  async createRecipient(payload: SessionPayload, key: string) {
+    return recipientSnapshot.parse(await this.call('/accounts', payload, key));
+  }
+  async recipient(id: string) {
+    return recipientSnapshot.parse(await this.call(`/accounts/${encodeURIComponent(id)}`));
+  }
+  async accountLink(account: string, origin: string) {
+    return z.object({ url: z.string().url(), expires_at: z.number() }).parse(
+      await this.call('/account_links', {
+        account,
+        type: 'account_onboarding',
+        return_url: `${origin}/account/settings?connect_return=1`,
+        refresh_url: `${origin}/account/settings?connect_refresh=1`,
+      }),
+    );
+  }
+  async createTransfer(payload: SessionPayload, key: string) {
+    return transferSnapshot.parse(await this.call('/transfers', payload, key));
+  }
+  async transfer(id: string) {
+    return transferSnapshot.parse(await this.call(`/transfers/${encodeURIComponent(id)}`));
+  }
+  private async call(path: string, payload?: SessionPayload, key?: string): Promise<unknown> {
     let response: Response;
     try {
-      response = await fetch(`https://api.stripe.com/v1/checkout/sessions${path}`, {
+      response = await fetch(`https://api.stripe.com/v1${path}`, {
         method: payload ? 'POST' : 'GET',
         headers: {
           Authorization: `Bearer ${this.secret}`,
@@ -81,7 +159,12 @@ export class StripeCheckoutProvider implements CheckoutProvider {
         'STRIPE_REQUEST_FAILED',
         `Stripe could not complete this request (HTTP ${response.status}). Your reservation is preserved; retry from the order page or contact support.`,
       );
-    const result = stripeSessionSchema.safeParse(await response.json());
+    return response.json();
+  }
+  private async session(path: string, payload?: SessionPayload, key?: string) {
+    const result = stripeSessionSchema.safeParse(
+      await this.call(`/checkout/sessions${path}`, payload, key),
+    );
     check(
       result.success,
       'STRIPE_RESPONSE_INVALID',
@@ -91,13 +174,29 @@ export class StripeCheckoutProvider implements CheckoutProvider {
     return result.data;
   }
   create(payload: SessionPayload, key: string) {
-    return this.call('', payload, key);
+    return this.session('', payload, key);
   }
   retrieve(id: string) {
-    return this.call(`/${encodeURIComponent(id)}`);
+    return this.session(`/${encodeURIComponent(id)}`);
   }
   expire(id: string) {
-    return this.call(`/${encodeURIComponent(id)}/expire`, {});
+    return this.session(`/${encodeURIComponent(id)}/expire`, {});
+  }
+  async refund(payload: SessionPayload, key: string) {
+    return this.refundResponse(await this.call('/refunds', payload, key));
+  }
+  async retrieveRefund(id: string) {
+    return this.refundResponse(await this.call(`/refunds/${encodeURIComponent(id)}`));
+  }
+  private refundResponse(value: unknown) {
+    const parsed = stripeRefundSchema.safeParse(value);
+    check(
+      parsed.success,
+      'STRIPE_RESPONSE_INVALID',
+      'Unexpected refund response. Contact finance support.',
+      502,
+    );
+    return parsed.data;
   }
 }
 
@@ -110,7 +209,9 @@ export function stripeConfiguration(env: NodeJS.ProcessEnv = process.env) {
     500,
   );
   const enabled = selection === 'stripe_test' || (selection === 'auto' && !!env.STRIPE_SECRET_KEY);
-  const provider = enabled ? new StripeCheckoutProvider(env.STRIPE_SECRET_KEY || '') : undefined;
+  const provider = enabled
+    ? new StripeCheckoutProvider(env.STRIPE_SECRET_KEY || '', env.STRIPE_ACCOUNT_ID)
+    : undefined;
   const origin = env.APP_ORIGIN || 'http://127.0.0.1:3000';
   const url = new URL(origin);
   check(
@@ -122,10 +223,16 @@ export function stripeConfiguration(env: NodeJS.ProcessEnv = process.env) {
     'APP_ORIGIN must be an HTTP(S) origin without a path or credentials.',
     500,
   );
-  return { provider, origin, webhookSecret: env.STRIPE_WEBHOOK_SECRET };
+  return {
+    provider,
+    origin,
+    webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    connectCountries: (env.CONNECT_TEST_COUNTRIES || '').split(',').filter(Boolean),
+    connectTransfers: env.CONNECT_TEST_TRANSFERS === 'true',
+  };
 }
 
-export function verifyStripeEvent(raw: Buffer, signature: string, secret?: string) {
+export function verifyStripeSignature(raw: Buffer, signature: string, secret?: string) {
   check(secret, 'WEBHOOK_NOT_CONFIGURED', 'Stripe webhook signing is not configured.', 503);
   const fields = signature.split(',').map((part) => part.split('='));
   const timestamp = fields.find(([name]) => name === 't')?.[1] || '';
@@ -150,12 +257,16 @@ export function verifyStripeEvent(raw: Buffer, signature: string, secret?: strin
     'Invalid Stripe webhook signature.',
     400,
   );
+}
+export function verifyStripeEvent(raw: Buffer, signature: string, secret?: string) {
+  verifyStripeSignature(raw, signature, secret);
   try {
     return z
       .object({
         id: z.string().startsWith('evt_'),
         type: z.string(),
         livemode: z.literal(false),
+        account: z.string().optional(),
         data: z.object({ object: z.object({ id: z.string().startsWith('cs_test_') }) }),
       })
       .parse(JSON.parse(raw.toString('utf8')));

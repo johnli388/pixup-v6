@@ -27,6 +27,7 @@ const main = [
   ['/', 'Discover', Compass],
   ['/marketplace', 'Marketplace', Store],
   ['/collections', 'Collections', Layers],
+  ['/channels', 'Channels', Store],
 ] as const;
 const personal = [
   ['/account/collection', 'My collection', Layers],
@@ -86,6 +87,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {nav([
               ['/workspace/seller', 'Seller studio', Store],
               ['/workspace/creator', 'Creator studio', Palette],
+              ['/workspace/channels', 'Channel workspace', Package],
+              ['/workspace/developer', 'Developer tools', Activity],
             ])}
             {user?.is_staff && nav([['/ops', 'Operations', ShieldCheck]])}
           </nav>

@@ -1,4 +1,6 @@
 'use client';
+import { AttributionReport } from './price-trust';
+import { OrganizationInventory } from './saas-inventory';
 import type { RePoolOffer as Offer, RePoolTerms } from '../../../packages/domain/contracts';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -54,6 +56,8 @@ function ArtworkPicker({
   onBusyChange: (busy: boolean) => void;
 }) {
   const { user } = useSession();
+  const { data: uploads, refetch: refreshUploads } = useData('/evidence');
+  const [pending, setPending] = useState('');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   async function upload(file?: File) {
@@ -71,6 +75,13 @@ function ArtworkPicker({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Upload failed.');
+      if (data.state && data.state !== 'approved') {
+        setPending(
+          `Upload ${data.id} is saved and awaits scanning and independent review. Select it below after approval.`,
+        );
+        await refreshUploads();
+        return;
+      }
       onChange(data.artwork);
     } catch (e) {
       setError((e as Error).message);
@@ -118,6 +129,39 @@ function ArtworkPicker({
         </div>
       )}
       <ErrorNotice error={error} />
+      {pending && <p role="status">{pending}</p>}
+      {!!uploads?.files.some((f: Row) => f.purpose === 'artwork' && f.state === 'approved') && (
+        <label className="field">
+          Use approved artwork
+          <select
+            value={value.startsWith('media:') ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <option value="" disabled>
+              Select approved upload
+            </option>
+            {uploads.files
+              .filter(
+                (f: Row) =>
+                  f.purpose === 'artwork' && f.state === 'approved' && f.owner_id === user?.id,
+              )
+              .map((f: Row) => (
+                <option key={f.id} value={`media:${f.id}`}>
+                  {f.id}
+                </option>
+              ))}
+          </select>
+        </label>
+      )}
+      {pending && (
+        <button
+          type="button"
+          className="button small secondary"
+          onClick={() => void refreshUploads()}
+        >
+          Refresh approved artwork
+        </button>
+      )}
       <small>
         PNG, JPEG or WebP · Up to 6 MB / 24 MP. Images are decoded, resized, and metadata is
         removed.
@@ -176,6 +220,7 @@ function SellerInner() {
           icon={<Wallet size={18} />}
         />
       </div>
+      <OrganizationInventory />
       <div className="tabs spaced">
         {['Inventory', 'Intakes', 'Settlements'].map((t) => (
           <button key={t} className={tab === t ? 'selected' : ''} onClick={() => setTab(t)}>
@@ -804,6 +849,7 @@ function CreatorInner() {
         </p>
       )}
       <SectionTitle title="Your collections" />
+      <AttributionReport data={data.attribution} />
       <ErrorNotice error={action.error} />
       {data.collections.length ? (
         <div className="creator-collections">

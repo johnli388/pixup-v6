@@ -2,6 +2,7 @@ import type { Database } from './index';
 import { one } from './index';
 import { passwordHash } from '../domain/security';
 import { id, provenance, journal } from '../domain/core';
+import { privacyPolicy } from '../domain/privacy';
 import { staffPermissions } from '../domain/contracts';
 
 export async function seed(db: Database) {
@@ -29,11 +30,26 @@ export async function seed(db: Database) {
         `${uid}-org`,
       ]);
       if (staff)
-        for (const permission of staffPermissions)
+        for (const permission of staffPermissions.filter((p) => p !== 'identity_admin'))
           await tx.query('INSERT INTO staff_permissions(user_id,permission) VALUES ($1,$2)', [
             uid,
             permission,
           ]);
+    }
+    // Explicit synthetic consent belongs only to newly created demo fixtures.
+    // Existing accounts are never silently backfilled as consenting adults.
+    if ((await one(tx, "SELECT to_regclass('privacy_profiles') AS present"))?.present) {
+      const policy = privacyPolicy();
+      for (const uid of ['collector', 'creator', 'seller', 'ops', 'platform']) {
+        await tx.query(
+          'INSERT INTO privacy_profiles(user_id,terms_version,privacy_version,minimum_age,age_attested_at) VALUES ($1,$2,$3,$4,now())',
+          [uid, policy.terms_version, policy.privacy_version, policy.minimum_age],
+        );
+        await tx.query(
+          "INSERT INTO privacy_consents(id,user_id,terms_version,privacy_version,minimum_age,adult,marketing_opt_in,source) VALUES ($1,$2,$3,$4,$5,true,false,'demo_fixture')",
+          [id(), uid, policy.terms_version, policy.privacy_version, policy.minimum_age],
+        );
+      }
     }
     const collections = [
       [

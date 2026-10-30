@@ -1,4 +1,5 @@
 'use client';
+import { OwnerTransfers, TransferRequest } from './identity-access';
 import type {
   Invitation,
   OrganizationMembers as Members,
@@ -20,8 +21,8 @@ export function OrganizationSettings() {
     <section className="panel settings-panel">
       <h2>Workspace invitations</h2>
       <p>
-        Invitations appear here for the named account. This pilot does not send email or verify
-        email ownership.
+        Invitations appear for the addressed account. When verified invitation delivery is enabled,
+        open the email link before accepting.
       </p>
       <ErrorNotice error={error || action.error} />
       {!invitations ? (
@@ -53,6 +54,7 @@ export function OrganizationSettings() {
       ) : (
         <p>No pending invitations.</p>
       )}
+      <OwnerTransfers />
       {!!org && (
         <>
           <h2>Manage organization</h2>
@@ -84,6 +86,7 @@ function OrganizationMembers({ org }: { org: string }) {
   const [email, setEmail] = useState(''),
     [role, setRole] = useState('viewer');
   const action = useAction();
+  const { data: identityConfig } = useData('/identity/config');
   if (error) return <ErrorNotice error={error} />;
   if (isPending || !data) return <Loading />;
   return (
@@ -150,6 +153,7 @@ function OrganizationMembers({ org }: { org: string }) {
           )}
         </div>
       ))}
+      <TransferRequest org={org} members={data.members} />
       <h3>Sent invitations</h3>
       {data.invitations.map((invitation) => (
         <div className="workspace-row" key={invitation.id}>
@@ -160,6 +164,21 @@ function OrganizationMembers({ org }: { org: string }) {
             </p>
             <Status status={invitation.status} />
           </div>
+          {invitation.status === 'pending' && identityConfig?.mail_enabled && (
+            <button
+              className="button small secondary"
+              disabled={action.busy}
+              onClick={() =>
+                void action.run(
+                  `/organizations/${org}/invitations/${invitation.id}/resend`,
+                  {},
+                  'Invitation email queued.',
+                )
+              }
+            >
+              Resend invitation email
+            </button>
+          )}
           {invitation.status === 'pending' && (
             <button
               className="button small secondary"

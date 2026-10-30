@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "checked_at": "2026-10-30T21:08:23.528Z",
+  "environment": "Disposable local PostgreSQL; synthetic users, fake delayed provider; no production approval",
+  "load": {
+    "duration_seconds": 60,
+    "target_rps": 10,
+    "concurrency": 8,
+    "requests": 594,
+    "unexpected_statuses": [],
+    "rejected_arrivals": 0,
+    "p50_ms": 4,
+    "p95_ms": 7,
+    "p99_ms": 9,
+    "scarce_requests": 100,
+    "scarce_winners": 1,
+    "scarce_conflicts": 99,
+    "scarce_burst_ms": 106,
+    "scarce_p99_ms": 104,
+    "simulated_provider_latency_ms": 200,
+    "max_sampled_lock_waiters": 7,
+    "event_loop_p99_ms": 22,
+    "integrity": {
+      "journals_balanced": true,
+      "credits_valid": true,
+      "stock_unique": true,
+      "provenance_events_verified": 40
+    }
+  },
+  "backup": {
+    "encrypted": true,
+    "snapshot_at": "2026-10-30T21:08:22.841Z",
+    "tables": 55,
+    "key_retained": false
+  },
+  "recovery": {
+    "restored": true,
+    "tables": 55,
+    "restore_ms": 375,
+    "snapshot_at": "2026-10-30T21:08:22.841Z",
+    "snapshot_age_seconds": 1,
+    "integrity": {
+      "journals_balanced": true,
+      "credits_valid": true,
+      "stock_unique": true,
+      "provenance_events_verified": 40
+    }
+  },
+  "post_restore_notification_count": 1
+}

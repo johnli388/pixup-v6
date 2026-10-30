@@ -1,0 +1,31 @@
+groups:
+  - name: pixup-pilot
+    rules:
+      - alert: PixupUnavailable
+        expr: up{job="pixup"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          {
+            summary: 'PixUP metrics endpoint unavailable; check API, database and monitoring credentials',
+          }
+      - alert: PixupWorkerStalled
+        expr: time() - pixup_worker_last_success_seconds > 30
+        for: 1m
+        labels: { severity: critical }
+        annotations: { summary: 'PixUP core worker heartbeat stale' }
+      - alert: PixupOperationalException
+        expr: pixup_alert_active == 1
+        for: 1m
+        annotations:
+          { summary: 'PixUP durable operational alert is active; inspect the operations dashboard' }
+      - alert: PixupServerErrors
+        expr: sum(rate(pixup_http_errors_total[5m])) / clamp_min(sum(rate(pixup_http_requests_total[5m])), 0.01) > 0.02
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: 'PixUP server-error ratio exceeds 2 percent' }
+      - alert: PixupHighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(pixup_http_duration_seconds_bucket[5m]))) > 0.75
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: 'PixUP request p95 exceeds the local pilot budget of 750ms' }

@@ -323,7 +323,25 @@ test('settlement release respects fulfillment and support holds', async () => {
     rejection('DISPUTE_OPEN'),
   );
   await s.operations.resolveCase(ops, c.id, 'Resolved with inspection evidence.');
-  await s.operations.releaseSettlement(ops, settlement.id);
+  await db.query("UPDATE users SET is_staff=true WHERE id='creator'");
+  await db.query("INSERT INTO staff_permissions(user_id,permission) VALUES ('creator','finance')");
+  const approval = await s.finance.request(
+    ops,
+    'settlement_release',
+    settlement.id,
+    'Settlement release after support resolution',
+  );
+  await assert.rejects(
+    s.operations.releaseSettlement(ops, settlement.id),
+    rejection('FINANCE_APPROVAL_REQUIRED'),
+  );
+  await s.finance.decide(
+    { ...ops, id: 'creator' },
+    approval.id,
+    1,
+    'approve',
+    'Independent review of settlement and support resolution',
+  );
   await assert.rejects(s.commerce.refund(buyer, o.id), rejection('RECOVERY_REQUIRED'));
 });
 test('database rejects unbalanced journals, late unbalanced lines and historical edits', async () => {

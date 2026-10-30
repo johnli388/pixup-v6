@@ -19,12 +19,14 @@ Preview captures: [desktop](docs/screenshots/marketplace-desktop.png) · [mobile
 For a fresh checkout:
 
 ```sh
-npm ci
+npm run deps:ci
 cp .env.example .env
 npm run dev
 ```
 
-The existing workspace `.npmrc` was preserved. It points to a corporate registry that was unavailable during implementation; public npm access was also blocked. Installation here used verified package content already in the local cache. On another machine, use your organization's permitted npm registry. The lockfile contains canonical public package URLs and package integrity hashes, not a dependency on the temporary cache server.
+Broadcom Artifactory remains the default registry in `.npmrc`. Use `npm run deps:ci` for lockfile installs or `npm run deps:install` for regular installs: the helper probes the configured registry, then uses `https://registry.npmjs.org/` if the first registry is unavailable. Each probe has a five-second fetch timeout and no retries. The choice applies only to that command; `.npmrc` and global npm settings are unchanged. If both probes fail, installation does not start.
+
+Run `npm run registry:check` to check availability without installing. Additional install options/packages work through `npm run deps:install -- <package-or-options>`. Ordinary `npm install` and `npm ci` continue to use the configured registry directly; npm has one default registry, so the helper provides failover. For a manual override, use `npm ci --registry=https://registry.npmjs.org/`. Probes use [npm ping](https://docs.npmjs.com/cli/v11/commands/npm-ping/), retaining npm's proxy, CA and scoped-registry settings. Explicit lockfile URLs and scoped registries still apply; this is default-registry failover, not per-package mirroring.
 
 ## Demo accounts
 
@@ -77,11 +79,31 @@ Add the CLI's signing secret to `.env` as `STRIPE_WEBHOOK_SECRET`, then restart 
 
 Stripe sessions reserve stock for 35 minutes. The local expiry worker never releases an initiated Stripe reservation on a browser timeout: the provider must confirm expiration. Cancellation also resolves Stripe status first, including a payment that won the cancellation race. Uncertain requests retain the reservation; very old ambiguous creates require support reconciliation instead of a new charge attempt. Credit-only totals use a zero-total Checkout session and still require completion; partial credit redemption leaves at least the USD card minimum when cash remains.
 
-Stripe refunds, disputes and Connect payouts are not implemented. Local demo refunds and simulated payout releases are blocked for Stripe orders so they cannot imply a provider-side reversal or transfer. Taxes, fulfillment and business terms remain pilot simulations.
+**Stripe test refunds and recovery:** sign in as Operations → Payments → Review payment. Finance staff can assign an open review, reconcile the original Checkout Session, cancel only if Stripe confirms it is unpaid, or issue a full test refund with a reason and explicit confirmation. A lost session must be matched by its original ID; the server validates amount, currency and order identity before acting. Existing pending reviews are backfilled by migration `006-payment-recovery.sql` at startup.
+
+Refunds retain a durable request and provider idempotency key. Listing, RePool intake and shipment are blocked while the refund is pending. Only a matching successful Stripe refund reverses the journal, restores original credits and returns title. Credit-only orders restore credits without a cash refund. Paid inventory exceptions can be refunded without transferring title, and quarantine is preserved. The order page shows refund progress; stale ambiguous refunds require the original refund ID from the Stripe test dashboard. Failed/canceled refunds are recorded without silently creating a replacement.
+
+Item 3 adds independently approved partial cash adjustments and failed-refund replacements, canonical refund/dispute events, account-bound recovery, immutable gross-cash/refund reconciliation, hosted Express test onboarding and opt-in transfers to connected test balances. Operations → Payments exposes recovery; Settings exposes onboarding when countries are configured. Connect is disabled by default, and transfers are not bank payouts. See [payment controls and acceptance runbook](docs/payment-controls.md) for configuration, limits and the manual hosted-completion harness. Local demo refunds and simulated payout releases remain blocked for Stripe orders. Live payments, bank payouts, tax and approved commercial terms remain outstanding.
+
+Item pages now show an **Item passport** with separate registry/source, VIA authenticity, condition, certificate and custody fields. A registry entry or QR lookup is not a physical authentication or an ownership claim.
 
 ```sh
 npm run stripe:check  # Create/retrieve/expire $1 and credit-only test sessions; no payment
+npm run stripe:refund-check  # Create and refund a $1 Stripe test payment; no real funds
+npm run stripe:controls-check # Validate test partial/remaining refunds and canonical retrieval
 ```
+
+## Commercial policy
+
+Item 1 adds **Operations → Commercial**, with seven decision areas, immutable proposals and policy versions, independent finance reviews, and controls to pause/restore pilot checkout or PixUP-owned credit redemption. Quotes and orders retain their original commercial snapshots. Existing demo terms and the 18+ baseline are preserved; production commercial decisions remain unresolved. See the [commercial policy runbook](docs/commercial-policy.md).
+
+## Channel pilots and scoped discovery tools
+
+Open **Workspace → Channel workspace** to enable pilot gates, register sealed stock, allocate existing listings and manage CVM/LiveUP fulfillment. CVM and LiveUP activate first; GOUP/WaxUP follow, then scoped Query/Match/Route. All gates start disabled and require staff evidence. Buyers use `/channels` and the existing quote/order/payment flow.
+
+CVM includes signed commands/events, offline checks, ambiguous-vend recovery and a persistent device simulator. LiveUP records witnessed physical openings and unverified child-item lineage. GOUP keeps separate participant payments and shipping shares. WaxUP requires business approval and cash-only sealed-case orders. **Workspace → Developer tools** creates scoped, expiring credentials and runs read-only inventory queries, matches and route previews with quotas and replay-safe usage.
+
+See [channel adapter setup and protocol reference](docs/channel-adapters.md) for activation, simulator commands, recovery and provider limitations. Startup applies migration 007 while preserving existing orders as web orders. No live device, stream, carrier or external LLM service is connected by this increment.
 
 ## Commands
 
@@ -94,6 +116,15 @@ npm run build       # Typecheck and optimized Next.js build
 APP_MODE=demo npm start  # Serve the built frontend with the demo API
 npm run db:migrate  # Apply database migrations independently
 npm run stripe:check # Check Stripe test session creation/retrieval/expiry
+npm run stripe:refund-check # Exercise test PaymentIntent and provider refund (uses .env)
+npm run postgres:recovery-check # Requires PIXUP_VERIFY_DATABASE_URL: empty disposable PostgreSQL DB
+npm run cvm:sim -- init /tmp/pixup-device-demo # Create local simulator device keys
+npm run security:audit # Production dependency advisory assessment; unavailable results fail
+npm run pricing:calibrate # Reproduce synthetic comparable-price calibration scenarios
+npm run trust:sign -- request.json signature.json # Offline custodian only; explicit key file/ID required
+npm run ops:verify # Load and encrypted restore drill; requires two empty disposable PostgreSQL URLs
+npm run db:backup -- /secure-backups/snapshot.pxb # Explicit backup URL and encryption key required
+npm run db:restore -- /secure-backups/snapshot.pxb # Explicit empty restore database required
 npm run format     # Format application source
 ```
 
@@ -108,7 +139,7 @@ docker compose up -d db
 DATABASE_URL=postgresql://pixup:local-development-only@127.0.0.1:5432/pixup npm run dev
 ```
 
-The included Compose file exposes the database on loopback only and uses a named development volume. The embedded and external adapters share SQL migrations. External PostgreSQL was separately exercised for migrations, seeding and simultaneous inventory reservations. Do not point this seeded demo at a database containing production records.
+The included Compose file exposes the database on loopback only and uses a named development volume. The embedded and external adapters share SQL migrations. PostgreSQL 18 was exercised through migrations 001–013, exception backfill, checkout replay, concurrent payment/refund completion, channel stock contention, signed vend replay, tool quotas, price snapshots, checkpoint payloads, subscription replay/invoices, metering, structured inventory, finance approvals, private evidence, physical incident recovery, scoped partial refunds/reconciliation and Connect test transfers. The external adapter now preserves encoded JSON payloads without double-encoding them. Existing external databases with JSON scalar strings from the older adapter need a separate data review; this change does not rewrite their immutable history. Do not point this seeded demo at a database containing production records.
 
 ## Structure
 
@@ -135,4 +166,32 @@ Inventory allocation and journals commit transactionally. Database constraints p
 
 Artwork uploads accept PNG/JPEG/WebP up to 6 MB and 24 megapixels, decode and re-encode through Sharp, strip metadata, and store a bounded WebP in the database. Originals are not retained. Draft artwork is private; publishing makes the attached artwork accessible. Production needs object storage, scanning, moderation, quotas and retention controls.
 
-Read [implementation status](docs/implementation-status.md) before extending or deploying. The broader CVM, LiveUP, subscription and AI roadmap remains staged after this first web release.
+Read [implementation status](docs/implementation-status.md) before extending or deploying. CVM, LiveUP, GOUP/WaxUP and read-only AI tool adapters are available as gated local pilots; production provider integration and live subscription billing remain staged.
+
+Account settings now requires an **18+ pilot declaration** before new commercial activity and provides privacy export/restriction requests. Existing accounts are not silently marked as consenting adults; newly generated demo fixtures have labeled synthetic declarations. Operations includes support-scoped Privacy and audit-scoped Monitoring views. See the [security assessment](docs/security-assessment.md) and [operational runbook](docs/operational-readiness.md) for alerts, encrypted PostgreSQL backups, restore/load exercises and remaining paid-pilot launch gates.
+
+Operations also includes **Pricing** for curated cohorts, reviewed external observations and separate simulation snapshots, plus **Signatures** for offline certificate/checkpoint requests and verified artifact imports. Creator attribution remains observational; governance, reserves and IFCI payments remain disabled. Read [price methodology and independent signing setup](docs/price-attribution-trust.md) before configuring public trust roots. Migration 009 adds these records without fabricating prices, approvals or signatures.
+
+Item 5 adds **Settings → Subscription and usage**, **Seller Studio → Organization inventory**, and **Operations → Billing / Approvals**. Finance drafts explicit monthly plans and another finance reviewer approves activation; workspace owners can then consent to hosted Stripe test subscription Checkout. Set `BILLING_PROVIDER=stripe_test` to enable it, using the existing server-only test key and a separate `STRIPE_BILLING_WEBHOOK_SECRET`. The seed has only one staff identity; independent review requires a separately provisioned finance account. No plans or prices are automatically approved.
+
+Migration 010 adds subscription lifecycle/invoice records, included-usage caps, category-specific catalog attributes, organization inventory delegation and audited independent approvals for plans, inventory assignment and simulated settlement release. Delegation preserves the recorded title owner and seller payee. See [billing, inventory and finance setup](docs/saas-inventory-finance.md) for limits, recovery and remaining live-billing acceptance work. Verification passed **89 backend tests, 16 browser journeys, the production build and PostgreSQL migration/recovery checks**; subscription provider/browser tests use fixtures.
+
+Item 4 adds **Settings / Operations → Private evidence**, **Operations → Physical handling**, and simulated tracking on shipped orders. Migration 011 adds scoped image/PDF uploads, an optional private S3 adapter, fail-closed ClamAV scanning, independent moderation, intake serial/seal/bin/photo captures, local labels, shipment events, loss/damage holds and retention controls. `PHYSICAL_CAPTURE_REQUIRED=true` requires captures before receipt/assessment and disables the legacy shipment shortcut. `EVIDENCE_STORAGE=s3` enables managed artwork processing; without a configured scanner, evidence stays quarantined. Existing `.env` values and application data are untouched by verification.
+
+Read [evidence storage and logistics setup](docs/evidence-and-logistics.md) for configuration, recovery and rollout gates. Carrier labels/events are explicitly simulated; no postage or cloud resource is purchased. Actual S3/scanner acceptance, approved handling/retention policies and independent object backups remain required. Database backups alone do not restore S3 evidence.
+
+Item 4 verification passed **99 backend tests, 18 browser journeys, the production build, and PostgreSQL migration 011/recovery checks**. Provider checks use deterministic S3/ClamAV fixtures; actual hosted provider acceptance remains outstanding.
+
+Item 3 uses additive migration 012. Test account scope is verified before new payment activity; existing initiated orders require explicit binding to their original verified session. No accounts, onboarding countries or transfer gates are silently enabled. See the [payment controls runbook](docs/payment-controls.md).
+
+Item 3 verification: **112 backend tests**, **20 browser journeys across the full run and corrected targeted rerun**, the production build and PostgreSQL migrations **001–012** passed. The Stripe test API also passed a $1 fixture payment with $0.40/$0.60 refunds and canonical reconciliation. Actual human hosted completion, Connect provider acceptance and bank payouts remain outstanding.
+
+## Identity and access controls
+
+Item 2 adds **Account security** for email verification, authenticator enrollment/recovery/replacement and session revocation; **Settings** for consented workspace owner transfers; and **Operations → Access** for independent staff-permission review. Migration 013 preserves existing users without inventing email verification, MFA or identity-administrator grants.
+
+Managed OIDC and Resend email adapters are configurable and disabled by default. `IDENTITY_ENCRYPTION_KEY` is required for factors/provider flows; `STAFF_MFA_REQUIRED=true` enforces enrollment for staff, and `VERIFIED_INVITATIONS_REQUIRED=true` keeps invitation verification required even if email delivery is temporarily disabled. No external email or IdP account was provisioned. See the [identity and access runbook](docs/identity-and-access.md) for callback settings, recovery, administrator bootstrap and acceptance limits.
+
+Optional `DATABASE_HARDENED=true` uses separately provisioned nonowner API/worker credentials and pre-applied migrations with `SEED_DEMO=false`. Initial PostgreSQL policies protect private collections, invitations and ownership proposals; full table coverage remains future work. See [role provisioning](infra/database/runtime-roles.sql) before enabling. The production dependency advisory check was [unavailable](docs/evidence/item2-dependency-assessment-2026-10-30.json), not passed.
+
+Item 2 validation passed **124 backend cases and 22 browser journeys across regression and corrected targeted runs**, the production build and PostgreSQL migration **013**/role-isolation checks. `.env` and application data were unchanged.

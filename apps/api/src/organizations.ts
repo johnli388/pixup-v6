@@ -1,10 +1,17 @@
+import type { IdentityService } from './identity';
 import { one, type Database, type SQL } from '../../../packages/database/index';
 import { audit, check, id } from '../../../packages/domain/core';
 import type { Actor } from './auth';
+import { lockChannels } from './channel-core';
+import { requireSeat } from '../../../packages/domain/saas';
 
 export class OrganizationService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    private identity?: IdentityService,
+  ) {}
   private async owner(tx: SQL, actor: Actor, org: string) {
+    await lockChannels(tx);
     // Serialize administration and acceptance with membership changes.
     const organization = await one(tx, 'SELECT * FROM organizations WHERE id=$1 FOR UPDATE', [org]);
     const membership = await one(
@@ -58,6 +65,7 @@ export class OrganizationService {
         400,
       );
       const normalized = email.trim().toLowerCase();
+      await requireSeat(tx, org);
       check(
         !(await one(
           tx,
@@ -77,6 +85,8 @@ export class OrganizationService {
         VALUES ($1,$2,$3,$4,$5) RETURNING id,expires_at`,
         [id(), org, normalized, role, actor.id],
       );
+      if (this.identity?.options.mail)
+        await this.identity.enqueue(tx, 'invite', normalized, null, invitation!.id);
       await audit(tx, actor.id, 'organization.invited', org, {
         invitation_id: invitation!.id,
         role,
@@ -86,6 +96,7 @@ export class OrganizationService {
   }
   async accept(actor: Actor, invitationId: string) {
     return this.db.transaction(async (tx) => {
+      await lockChannels(tx);
       const reference = await one(tx, 'SELECT org_id FROM organization_invitations WHERE id=$1', [
         invitationId,
       ]);
@@ -102,6 +113,24 @@ export class OrganizationService {
         'INVITATION_UNAVAILABLE',
         'This invitation has expired or is no longer pending.',
       );
+      if (this.identity?.options.mail || this.identity?.options.requireVerifiedInvitations)
+        check(
+          await one(
+            tx,
+            "SELECT u.id FROM users u WHERE u.id=$1 AND u.email_verified_at IS NOT NULL AND EXISTS(SELECT 1 FROM identity_challenges c WHERE c.kind='invite' AND c.resource_id=$2 AND c.email=u.email AND c.used_at IS NOT NULL)",
+            [actor.id, invitationId],
+          ),
+          'INVITATION_VERIFICATION_REQUIRED',
+          'Verify the addressed email invitation before accepting.',
+          403,
+        );
+      if (
+        !(await one(tx, 'SELECT user_id FROM memberships WHERE org_id=$1 AND user_id=$2', [
+          invitation.org_id,
+          actor.id,
+        ]))
+      )
+        await requireSeat(tx, invitation.org_id, false);
       await tx.query(
         'INSERT INTO memberships(user_id,org_id,role) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
         [actor.id, invitation.org_id, invitation.role],
@@ -113,6 +142,22 @@ export class OrganizationService {
         invitation_id: invitationId,
       });
       return { org_id: invitation.org_id };
+    });
+  }
+  async resendInvitation(actor: Actor, org: string, invitation: string) {
+    check(this.identity?.options.mail, 'MAIL_DISABLED', 'Configure email delivery first.', 503);
+    await this.identity!.limit('invite-resend:' + invitation);
+    return this.db.transaction(async (tx) => {
+      await this.owner(tx, actor, org);
+      const i = await one(
+        tx,
+        "SELECT * FROM organization_invitations WHERE id=$1 AND org_id=$2 AND status='pending' AND expires_at>now()",
+        [invitation, org],
+      );
+      check(i, 'INVITATION_UNAVAILABLE', 'The original invitation is no longer pending.');
+      await this.identity!.enqueue(tx, 'invite', i.email, null, i.id);
+      await audit(tx, actor.id, 'organization.invitation_resent', org, { invitation_id: i.id });
+      return { ok: true };
     });
   }
   async revokeInvitation(actor: Actor, org: string, invitation: string) {

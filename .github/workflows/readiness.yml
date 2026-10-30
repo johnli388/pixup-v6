@@ -1,0 +1,69 @@
+name: Pilot readiness
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm run deps:ci
+      - run: npm test
+      - run: npm run pricing:calibrate
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: browser-failure-evidence, path: test-results, retention-days: 7 }
+  dependency-advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: PIXUP_SECURITY_REPORT=security-audit.json npm run security:audit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: dependency-assessment, path: security-audit.json, retention-days: 7 }
+  restore-and-load:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          { POSTGRES_PASSWORD: disposable-ci-only, POSTGRES_USER: pixup, POSTGRES_DB: source_drill }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pixup -d source_drill"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm run deps:ci
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: createdb -h 127.0.0.1 -U pixup restore_drill
+        env: { PGPASSWORD: disposable-ci-only }
+      - run: createdb -h 127.0.0.1 -U pixup recovery_drill
+        env: { PGPASSWORD: disposable-ci-only }
+      - run: npm run postgres:recovery-check
+        env:
+          PIXUP_VERIFY_DATABASE_URL: postgres://pixup:disposable-ci-only@127.0.0.1:5432/recovery_drill
+      - run: npm run ops:verify
+        env:
+          PIXUP_VERIFY_DATABASE_URL: postgres://pixup:disposable-ci-only@127.0.0.1:5432/source_drill
+          PIXUP_VERIFY_RESTORE_URL: postgres://pixup:disposable-ci-only@127.0.0.1:5432/restore_drill
+          PIXUP_PG_BIN: /usr/bin
+          PIXUP_LOAD_SECONDS: '60'
+          PIXUP_LOAD_RPS: '10'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          {
+            name: restore-load-evidence,
+            path: /tmp/pixup-readiness-*/report.json,
+            retention-days: 7,
+          }
