@@ -1,0 +1,43 @@
+{
+  "name": "pixup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/run.mjs",
+    "dev:api": "tsx watch apps/api/src/main.ts",
+    "dev:web": "next dev apps/web --hostname 127.0.0.1",
+    "build": "npm run typecheck && next build apps/web",
+    "start": "node scripts/run.mjs --production",
+    "typecheck": "next typegen apps/web && tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "stripe:check": "node --import tsx scripts/stripe-check.ts",
+    "format": "prettier --write apps packages scripts tests playwright.config.ts tsconfig.json package.json compose.yaml README.md docs/implementation-status.md"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.4.3",
+    "@tanstack/react-query": "5.104.0",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "lucide-react": "1.44.0",
+    "next": "16.4.2",
+    "postgres": "3.4.7",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "sharp": "^0.35.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "1.64.1",
+    "@types/express": "5.0.6",
+    "@types/node": "26.6.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "prettier": "^3.4.2",
+    "tsx": "4.23.13",
+    "typescript": "^5.9.3"
+  }
+}

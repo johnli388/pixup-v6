@@ -1,0 +1,9 @@
+node_modules
+.data
+apps/web/.next
+apps/web/.next-e2e
+package-lock.json
+docs/planning
+test-results
+playwright-report
+apps/web/next-env.d.ts

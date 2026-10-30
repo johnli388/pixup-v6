@@ -1,0 +1,5 @@
+{
+  "name": "@pixup/web",
+  "private": true,
+  "type": "module"
+}
