@@ -1,4 +1,5 @@
 import { communityWorker } from './community';
+import { assistantConfiguration } from './assistant-provider';
 import { identityConfiguration } from './identity-providers';
 import { assertRuntimeRole } from '../../../packages/database/context';
 import 'dotenv/config';
@@ -32,9 +33,9 @@ if (hardened) {
       'Hardened database mode requires separate API/worker URLs, pre-applied migrations and SEED_DEMO=false.',
     );
   await assertRuntimeRole(db, false);
-  const v = await db.query("SELECT version FROM migrations WHERE version='015'");
+  const v = await db.query("SELECT version FROM migrations WHERE version='016'");
   if (!v.rows.length)
-    throw new Error('Apply migration 015 with the migration role before starting.');
+    throw new Error('Apply migration 016 with the migration role before starting.');
 } else await migrate(db);
 if (process.env.SEED_DEMO !== 'false') await seed(db);
 const identityOptions = identityConfiguration();
@@ -44,6 +45,7 @@ const services = new Services(
     billingConfiguration(),
     evidenceConfiguration(),
     identityOptions,
+    assistantConfiguration(),
   ),
   app = createApp(services);
 const workerDb = hardened ? await openDatabase(process.env.DATABASE_WORKER_URL) : db;

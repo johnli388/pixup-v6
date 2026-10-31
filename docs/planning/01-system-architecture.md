@@ -2,7 +2,7 @@
 
 Updated October 30, 2026 after reviewing all 40 pages of [PixUP-BP-J.pdf](../../PixUP-BP-J.pdf) and all 18 pages of [PixUP-Pitch-J.pdf](../../PixUP-Pitch-J.pdf). References use physical PDF pages; BP appendices A1–A16 are pages 25–40. Read with the [business review and decision register](README.md), [backend plan](02-backend-development-plan.md), [frontend plan](03-ui-frontend-development-plan.md) and [implementation status](../implementation-status.md). Scope remains web marketplace and invited creators first, followed by CVM and LiveUP pilots, as selected by the user.
 
-Implementation baseline reconciled October 30, 2026 through migrations **001–014** and the [cross-feature code review](../code-review-2026-10-30.md). The source includes configurable identity/email and MFA, private evidence/logistics adapters, scoped payment adjustments and Connect test transfers, SaaS entitlements, price/attribution/signing workflows, channel pilots, scoped read-only tools and versioned commercial approvals. Latest completed verification: **139 backend tests, 23 browser journeys, production build and PostgreSQL recovery/runtime-role checks**, including SCRAM-authenticated test roles. These are local/test implementations; hosted-provider acceptance, actual hardware/carrier operation, production commercial approval and live-money readiness remain outstanding. This documentation update records those results and does not rerun the application suite.
+Implementation baseline reconciled October 30, 2026 through migrations **001–016**, Community Hub, display-only Operations/community/channel previews, and **Ask PixUP / PixUP Guide**. The current-pilot gap review implements shared assistant quotas, dedicated assistant route recovery, unknown-route HTTP 404s and preview isolation coverage. See the [implementation gap review](05-current-pilot-gap-review.md) for source references, verification and the remaining roadmap. Existing identity, evidence, commerce, SaaS, trust, channel and commercial-policy controls remain in place. Hosted-provider acceptance, actual hardware/carrier operation, production commercial approval and live-money readiness remain outstanding.
 
 ## 0. Implemented baseline and PDF-driven changes
 
@@ -14,18 +14,19 @@ This is an incremental target architecture. The existing source already implemen
 
 | Boundary               | Implemented local/test behavior                                                                                                                                      | Required evolution                                                                                                                          |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Application            | Next.js role workspaces; modular Express API; PGlite/PostgreSQL; migrations 001–014                                                                                  | Route/domain extraction, protected staff deployment, managed infrastructure and durable independent workers                                 |
+| Application            | Next.js role workspaces; modular Express API; PGlite/PostgreSQL; migrations 001–016                                                                                  | Route/domain extraction, protected staff deployment, managed infrastructure and durable independent workers                                 |
 | Identity               | Configurable OIDC/email, verified invitation links, password recovery, MFA/recovery/replacement, consented owner transfer and independent staff access review        | Hosted provider acceptance, deployment MFA enforcement, provider deprovisioning, authenticated account linking and all-factor-loss recovery |
-| Tenancy and visibility | Nonowner API/worker role checks, transaction-local actor context and initial row policies; publication checks across catalog, media, channels and purchase           | Extend policies beyond collections, invitations and owner transfers; managed credential provisioning and review                             |
+| Tenancy and visibility | Nonowner API/worker checks, transaction-local actor context, collection/invitation/owner-transfer, Community Hub and assistant-quota row policies; shared publication checks | Extend policies across remaining private domains; managed credential provisioning and review |
 | Assets and trust       | Structured Sports/K-pop attributes, sealed packs/reveals, item passports, reviewed price snapshots, observational attribution and signing/checkpoint tooling         | Rights contracts, production proofs, market calibration, independently managed signing keys and retained checkpoints                        |
 | Payments               | Account-bound Stripe test Checkout, full/partial refunds, refund replacement review, dispute holds, gross-cash reconciliation and opt-in connected-balance transfers | Hosted Checkout/Connect acceptance, dispute loss accounting, transfer reversals, bank payouts and fee/net/bank reconciliation               |
 | Commercial policy      | Seven-topic decision register, independent finance review, pilot checkout/credit controls and immutable quote/order snapshots                                        | Actual creator, protection, refund-window, tax and jurisdiction decisions; local review never approves production launch                    |
 | RePool                 | Versioned offers, new consent on revision, one credit grant/title transfer and return handling                                                                       | Consigned pool authority, approved concentration/governance policy and production liability treatment                                       |
 | Evidence and logistics | Private S3-compatible adapter, ClamAV adapter, content review, capture/seals/bins, incident holds and simulated carrier tracking                                     | Deployed storage/scanner acceptance, evidence procedures, independent object restoration and real carrier integration                       |
 | SaaS and channels      | Versioned test plans, subscriptions/usage, delegated inventory, CVM/LiveUP then GOUP/WaxUP adapters and scoped Query/Match/Route                                     | Hosted billing lifecycle, real device/stream/fulfillment partners, resource agreements and production channel acceptance                    |
+| Community and assistant | Migration 015 member content/moderation, Ask PixUP local search/help and opt-in AI adapter; display-only previews | Staged community rollout, live AI acceptance, answer-quality/data review and deployment-wide cost monitoring |
 | Operations             | 18+ pilot declarations, privacy controls, metrics/alerts, encrypted backup/restore/load harnesses and CI recovery/role checks                                        | Available dependency assessment, independent security review, managed off-host recovery, alert delivery and representative sustained load   |
 
-Stripe orders cannot use simulated refund/payout actions; live keys are rejected. Stripe test API checks include session creation/retrieval/expiry and fixture full/partial refunds. Actual hosted Checkout completion and Connect onboarding/transfers remain acceptance work. Database verification covers migrations 001–014, immutable financial/commercial history, concurrent recovery, nonowner API/worker roles and pooled actor-context reset. The CI workflow now includes the separate PostgreSQL recovery/role suite; the updated workflow has not been remotely dispatched.
+Stripe orders cannot use simulated refund/payout actions; live keys are rejected. Stripe test API checks include session creation/retrieval/expiry and fixture full/partial refunds. Actual hosted Checkout completion and Connect onboarding/transfers remain acceptance work. Database verification covers migrations 001–016, immutable financial/commercial history, concurrent recovery, nonowner API/worker roles and pooled actor-context reset. The CI workflow now includes the separate PostgreSQL recovery/role suite; the updated workflow has not been remotely dispatched.
 
 | Shared requirement IDs                   | PDF evidence                                      | Architecture consequence                                                                                                                                |
 | ---------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -96,7 +97,7 @@ flowchart TB
 | Payments       | Stripe test Checkout, partial refunds/dispute holds and opt-in Connect test transfers         | Hosted acceptance, live marketplace suitability, transfer reversal and bank payout/accounting remain separate gates                                               |
 | Shipping/tax   | Provider adapters selected after operational validation                                       | Buy carrier connectivity and tax calculation; retain shipment and tax evidence                                                                                    |
 | Live video     | Managed streaming service in phase 5                                                          | Own stream-to-order/asset association; avoid building video transport                                                                                             |
-| AI             | Separate Python workers only where required                                                   | Keep inference dependencies and failures outside settlement transactions                                                                                          |
+| AI | TypeScript AssistantService with local search/help and an optional server-side OpenAI Responses adapter | Keep model planning separate from authorized SQL and commerce; external calls require configuration and user opt-in; separate inference workers only if later workloads require them |
 | Telemetry      | OpenTelemetry-compatible traces, logs, metrics and alerts                                     | Follow an order or custody event across webhooks, workers, and providers                                                                                          |
 
 Retain pinned working dependencies and record upgrade ownership. Cloud and live-payment selection is provisional: confirm business-model acceptance, regional support, data terms, operational limits, and total cost before contracting. A Stripe test account is configured; this plan provisions no infrastructure or live integrations.
@@ -120,6 +121,8 @@ Next.js supports server/client component composition for this rendering split. [
 | Attribution / IFCI         | Verified source attribution and observational scores                               | Creating payment rights absent an active agreement           |
 | SaaS billing               | Plans, subscriptions, usage and entitlements                                       | Granting business permissions solely from a plan tier        |
 | Channel operations         | Devices, sessions, stock assignments, maintenance, partner commissions             | Separate copies of inventory, ownership, or settlement rules |
+| Community Hub | Explicit member profiles, topics, moderated posts/comments, interests, notifications and appeals | Commerce, certificates, provenance and automatic attribution payments |
+| Ask PixUP / PixUP Guide | Bounded search plans, permission-scoped results, curated help and optional AI explanations | Public buyer directory, account mutations, order execution, independent inventory or financial truth |
 | Support and governance     | Cases, approvals, policy changes, operational audit                                | Unlogged administrative balance edits                        |
 
 Each module exposes application commands and queries; other modules do not casually update its tables. The monolith can coordinate a database transaction across modules where required. Background reports and search views are expendable projections that can be rebuilt.
@@ -140,7 +143,7 @@ Public visibility must inspect the asset's collection foreign key and require a 
 
 ## 5. Core data model
 
-The diagram and entity requirements describe the target model, not a claim that every agreement or governance entity exists. Migrations 001–014 are the executable schema; extend existing pack, evidence, subscription, identity and commercial-policy records rather than duplicating them.
+The diagram and entity requirements describe the target model, not a claim that every agreement or governance entity exists. Migrations 001–016 are the executable schema, including Community Hub profiles, topics, entries, revisions, interests, reports, actions, appeals and notifications. Extend these and the existing pack, evidence, subscription, identity and commercial-policy records rather than duplicating them. Migration 016 adds one actor-scoped `assistant_request_limits` row per account that uses Ask PixUP. It stores only the request window, count and expiring lease; no prompts or answers. Preview fixtures add no transactional seed data; assistant conversations remain in browser page memory.
 
 ```mermaid
 erDiagram
@@ -285,6 +288,36 @@ A network connection, signed telemetry, and camera image are evidence signals ra
 BP p. 15 splits resource ownership across device, cards, protocol, operations and site. Store effective partner agreements for each factor and create contractual payables from the same sale/fulfillment event. A MeetUP servicing task and a CVM sale may describe one transaction: assign one primary commerce channel and separate assistance/attribution tags to prevent double-counted GMV or commissions. Record deployment cost, stock cost, downtime, replenishment, refunds and partner shares before comparing actual node payback with the $15 pack scenario.
 
 Card shows/GlowUP remain proposed manual validation paths before CVM scale (BP p. 27); GOUP is an early experiment in BP p. 28. Local GOUP/WaxUP and CVM adapters now exist, but real partner operation still needs channel acceptance and approved obligations. Software draws remain deferred. WaxUP needs approved cash wholesale terms, conditional returns and partner attribution; suggested retail/advertising terms must not become a PulseRate floor.
+
+### 10.1 Ask PixUP assistant: implemented boundary
+
+Ask PixUP is the launcher label; the chat calls itself **PixUP Guide** at `/assistant`. [`AssistantService`](../../apps/api/src/assistant.ts) and the [provider adapter](../../apps/api/src/assistant-provider.ts) run in the existing Express process. The feature is independent of the credential-based Query/Match/Route tools: it uses the signed-in browser session and does not change their channel gates, scopes or metering. It is a read-only search/help agent, with no autonomous command execution.
+
+```mermaid
+flowchart LR
+  Chat[Ask PixUP chat] --> Auth[Session, CSRF, MFA and account restriction checks]
+  Auth --> Budget[(Shared request budget and expiring lease)]
+  Budget --> Guide[AssistantService and bounded plan validation]
+  Guide --> SQL[Parameterized public or participant-only queries]
+  SQL --> DB[(Existing catalog and order records)]
+  Guide -. Configured provider and user opt-in .-> AI[OpenAI plan and answer adapter]
+  SQL --> Results[Server-created result links and local answer]
+  SQL -. Public result projection only .-> AI
+  AI -->|Answer text only| Results
+  Results --> Chat
+```
+
+The model may choose an intent and filters; it never supplies SQL, identity, credentials, arbitrary tools or result URLs. Public search returns active specimen listings with published parents where applicable, excluding channel allocations and closed sellers. Seller results are public listing names linked to cards, not a separate business directory. Buyer results expose references only from the current user's sales; order results require that user to be buyer or seller, including for staff. No cross-account buyer directory, account-email search or private-inventory search is added. Discovery results are not a reservation or a guarantee of checkout eligibility.
+
+`ASSISTANT_PROVIDER=local` is the default. Optional AI uses `ASSISTANT_PROVIDER=openai`, server-only `OPENAI_API_KEY` and `OPENAI_ASSISTANT_MODEL` (default `gpt-4.1-mini`), plus the user's **Use AI answers** selection. The browser receives only `ai_available`. Recognized buyer/order requests bypass AI planning, and private query results are never sent to the model even if its plan selects those intents. Opted-in messages/history can still contain private details the user typed. Requests use `store: false`; this is not a claim of zero provider retention.
+
+Provider planning/answer failures fall back to local search/help. Each call has a 12-second timeout, at most two calls per message and bounded output. No chat is persisted by PixUP; existing telemetry omits bodies. Migration 016 atomically enforces 12 requests per 60-second window per account across API processes. A 60-second lease serializes requests and recovers after crashes; token-checked release cannot unlock a newer request. Stale requests are rejected before the answer call and before return. Provider data review, live API acceptance, cost/latency measurement and broader answer-quality/adversarial evaluations remain rollout work. See the [assistant runbook](../assistant.md).
+
+### 10.2 Display-only previews
+
+Operations provides permission-filtered samples for seven core tabs, automatic preview for an empty workspace, an explicit live/sample toggle and disabled sample mutations. Community provides seven fictional topics, eight posts and ten replies with search, type filters and preview detail routes; it appears on an empty unfiltered main feed or a closed-pilot landing page. These previews do not create moderation records, ledger entries or engagement events.
+
+The Channels directory separately shows **Arts District Collect Station** (CVM, Los Angeles), **Santa Monica Live Collect** (LiveUP, Los Angeles area) and **SoMa Collector Circle** (GOUP, San Francisco). Their detail pages describe fictional concepts with unconfirmed venues, schedules and operators. They create no channel contexts, device identities, allocations or purchases and do not enable gates. Live records remain authoritative; sample content is not added to assistant database retrieval or production metrics.
 
 ## 11. Security, operations, and reliability targets
 

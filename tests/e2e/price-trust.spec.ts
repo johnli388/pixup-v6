@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 test('finance curates price references and audit exports an unsigned checkpoint without activating money policies', async ({
   page,
 }) => {

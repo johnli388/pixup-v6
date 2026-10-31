@@ -4,7 +4,7 @@ Updated October 30, 2026 after reviewing all 40 pages of [PixUP-BP-J.pdf](../../
 
 The confirmed sequence remains **web marketplace and invited creators first, then CVM and LiveUP pilots**. The PDFs prioritize CVM/LiveUP and agency supply first; invited creator publishing is an intentional earlier pilot requested by the user. Broad self-service issuance, channel rollout and paid SaaS expansion remain gated. Read with the [frontend plan](03-ui-frontend-development-plan.md), [architecture](01-system-architecture.md), [decision register D1–D16](README.md#decisions-and-inconsistencies-to-resolve), and [implementation status](../implementation-status.md). The implementation baseline and incremental backlog below supersede the original greenfield schedule for this workstream; the architecture remains the target design.
 
-Implementation baseline reconciled October 30, 2026 through migrations **001–014** and the [cross-feature code review](../code-review-2026-10-30.md). The source includes configurable identity/email and MFA, private evidence/logistics adapters, scoped payment adjustments and Connect test transfers, SaaS entitlements, price/attribution/signing workflows, channel pilots, scoped read-only tools and versioned commercial approvals. Latest completed verification: **139 backend tests, 23 browser journeys, production build and PostgreSQL recovery/runtime-role checks**, including SCRAM-authenticated test roles. These are local/test implementations; hosted-provider acceptance, actual hardware/carrier operation, production commercial approval and live-money readiness remain outstanding. This documentation update records those results and does not rerun the application suite.
+Implementation baseline reconciled October 30, 2026 through migrations **001–016**, Community Hub, display-only Operations/community/channel previews, and **Ask PixUP / PixUP Guide**. The current-pilot gap review implements shared assistant quotas, dedicated assistant route recovery, unknown-route HTTP 404s and preview isolation coverage. See the [implementation gap review](05-current-pilot-gap-review.md) for source references, verification and the remaining roadmap. Existing identity, evidence, commerce, SaaS, trust, channel and commercial-policy controls remain in place. Hosted-provider acceptance, actual hardware/carrier operation, production commercial approval and live-money readiness remain outstanding.
 
 ## 0. Business requirements and implementation baseline
 
@@ -45,8 +45,10 @@ The requirement IDs below are shared with the frontend plan. “Required” desc
 | Commerce           | Account-scoped Checkout, full/partial refunds, refund replacement approvals, dispute holds, gross-cash reconciliation and gated Connect test transfers | Hosted authentication/onboarding acceptance, tax, dispute loss accounting, transfer reversals, bank payouts and fee/net/bank reconciliation       |
 | Commercial policy  | Migration 014: seven-topic proposals/review, immutable policy history and transaction snapshots, pilot credit/checkout controls                        | Named-owner production decisions for redemption, creator rights, seller protection, title/payout, refund windows, tax and markets                 |
 | Trust/RePool       | Reviewed price cohorts/snapshots, observational attribution, signed-record/checkpoint workflows; versioned RePool offers and original-tender recovery  | Market calibration, independent signer custody, retained checkpoints, consigned pool authority and approved concentration/governance rules        |
-| Infrastructure     | Migrations 001–014, nonowner API/worker roles, initial row policies, in-process workers, telemetry, encrypted restore/load verification and CI         | Managed deployment/secrets, durable independent workers, broader row policies, off-host recovery, advisory/security assessment and sustained load |
+| Infrastructure     | Migrations 001–016, nonowner API/worker roles, initial row policies, in-process workers, telemetry, encrypted restore/load verification and CI         | Managed deployment/secrets, durable independent workers, broader row policies, off-host recovery, advisory/security assessment and sustained load |
 | SaaS               | Independently approved immutable plans, test subscriptions/invoices, usage deduplication and entitlement limits                                        | Hosted renewal/dunning acceptance, approved offers, live billing, tax and revenue accounting                                                      |
+| Community Hub | Migration 015: member-only topics/posts/stories/comments, profiles/interests, moderated visibility, reports/appeals and notifications | Named moderator coverage, staged rollout, media, retention review and sustained load |
+| Ask PixUP | Session-scoped local search/help, optional OpenAI planning/answers, typed contracts, private-result isolation and bounded request budgets | Live provider acceptance, quality/adversarial evaluation and operational cost/latency evidence (shared quotas implemented) |
 | Channels/tools     | CVM/LiveUP, GOUP/WaxUP, signed simulator recovery and scoped Query/Match/Route; shared inventory/hold checks                                           | Actual hardware/video/fulfillment providers, partner resource agreements, wholesale disposition and evaluated agent integration                   |
 
 The pilot’s **5% seller fee, $8 delivery, 500-credit RePool offer and 100 credits per dollar** are test constants. They are not rates approved by either PDF. The BP’s proposed **5% FPCR exit allocation** is a different concept from the demo seller commission. Do not combine or activate them accidentally. The UI’s Art/Gaming fixtures do not establish readiness for those physical product categories; launch validation remains sports cards and K-pop photocards.
@@ -62,10 +64,10 @@ MVP supports fixed-price USD orders, a single seller per checkout, platform-owne
 Extend the current repository instead of starting another application:
 
 ```text
-apps/api/src/             # Express transport + auth/catalog/commerce/operations/media services
+apps/api/src/             # Express services, Community Hub, assistant.ts and assistant-provider.ts
 apps/web/                # Next.js consumer, creator, seller and staff surfaces
 packages/database/       # PostgreSQL/PGlite adapters, migrations, fixtures
-packages/domain/         # Shared invariants, journal, audit and provenance helpers
+packages/domain/         # Shared invariants, community.ts and assistant.ts request/response schemas
 tests/                   # Domain/HTTP tests and browser journeys
 ```
 
@@ -75,7 +77,7 @@ Extend shared Zod response schemas already covering organizations, invitations, 
 
 Use additive versioned migrations: add nullable columns/tables, backfill with explicit provenance, validate constraints, then require new fields. Preserve existing asset/order IDs and journals. Mark imported fixture records as demo; do not fabricate rights, custody evidence or provider IDs during migration. Deploy a clean production database without seeded demo accounts, and exclude simulation data from live price/attribution datasets.
 
-Every feature includes authorization, policy snapshots, accepted/error states, operational visibility, migrations and relevant tests. Deploy to staging continuously. Capability switches apply by organization, market, category and channel; a flag cannot bypass a permission or eligibility check.
+Every feature includes appropriate authorization, policy snapshots, accepted/error states, operational visibility, additive migrations when persistence changes, and relevant tests. Ask PixUP and the display-only previews do not require a schema migration. Deploy to staging continuously. Capability switches apply by organization, market, category and channel; a flag cannot bypass a permission or eligibility check.
 
 ## 3. Remaining implementation backlog and delivery gates
 
@@ -96,8 +98,9 @@ B0–B12 retain the original plan’s identifiers. The inherited windows below a
 | B10 Paid-pilot hardening              | Weeks 16–24; whole team                        | Complete available advisory/independent security review, hosted recovery, managed backup/alert delivery, sustained load and operator exercises using existing harnesses                       | All section 12 gates pass; dates extend if provider or physical operations remain unready                                               |
 | B11 CVM and LiveUP pilots             | After B10; indicative months 7–9               | Validate implemented adapters with actual device/stream/recording/fulfillment partners; complete LiveUP outbound custody, partner statements and MeetUP field tasks                           | Paid order, physical outcome and funds reconcile through ambiguous failures                                                             |
 | B12 SaaS/governance/partner expansion | After pilot evidence; indicative months 10–12+ | Validate hosted subscription renewal/dunning and GOUP/WaxUP providers; approve resource agreements and wholesale disposition; expand evaluated tools and approved governance only after gates | Subscription lifecycle verified; per-channel admission tests; governance decisions reproducible                                         |
+| B13 Ask PixUP acceptance | Local implementation complete; before broader AI rollout | Configure a provider, validate live request/response behavior, evaluate retrieval/answer quality and prompt injection, measure cost/latency and establish deployment-wide spend alerts; shared quotas are implemented in migration 016 | Private-result isolation, explicit opt-in, local fallback and read-only boundaries remain intact; no dependence on enabling paid channel gates |
 
-Dependencies: B0 gates live commercial rules; B1+B2 → B3; B1+B4+B2 → B5; B2 → B6; B4+B5+B6 → B7; B4+B6 → B8; eligible B5/B7 observations → B9; B1–B9 → B10. B11 shares B4–B8 rather than maintaining a separate inventory or ledger. B12 billing can be developed earlier, but activation follows validated entitlements and approved offers. Overlapping windows require explicit contributor ownership.
+Dependencies: B0 gates live commercial rules; B1+B2 → B3; B1+B4+B2 → B5; B2 → B6; B4+B5+B6 → B7; B4+B6 → B8; eligible B5/B7 observations → B9; B1–B9 → B10. B11 shares B4–B8 rather than maintaining a separate inventory or ledger. B12 billing can be developed earlier, but activation follows validated entitlements and approved offers. B13 builds on existing B1 identity, B2 catalog visibility and B4 transaction scope plus B10 security/operations controls; it does not require B11/B12 channel activation. Overlapping windows require explicit contributor ownership.
 
 The BP/Pitch targets of 100 CVMs in year one, 2,000 in year three and the $15 licensed-pack model are business scenarios (BP pp. 15, 18–19; Pitch pp. 4, 13, 15). Use a small instrumented channel pilot to establish actual service capacity and unit economics before scaling; those targets do not establish a production load baseline.
 
@@ -115,6 +118,8 @@ The table below is the **target contract**, not a list of all currently implemen
 | `/v1/ops` returns permission-filtered aggregate queues                        | Preserve current warehouse/rights/finance isolation while splitting into paginated independent endpoints                                                                                                 |
 
 Current payment endpoints are `GET /v1/payments/config`, `POST /v1/orders/{id}/stripe-checkout`, `POST /v1/orders/{id}/payment-status` and `POST /v1/orders/{id}/cancel-payment`. Organization invitation/member routes and versioned intake offer actions also exist; extend them instead of introducing duplicate workflows. A future `/v1` target endpoint in the table below is not evidence of a missing current workflow.
+
+Ask PixUP adds `GET /v1/assistant/config` and `POST /v1/assistant/messages`; schemas and limits are detailed in section 10.3.1. Community member/moderator routes are under `/v1/community` and `/v1/ops/community`. Display-only Operations, Community and California channel samples add no backend endpoints or seed writes.
 
 Current contracts also cover `/v1/identity/*`, `/v1/evidence/*`, billing/inventory, channels/devices/tools and the independent approval surfaces. Migration 014 adds `GET /v1/ops/commercial`, proposal creation and `POST /v1/ops/commercial/decisions/:id/review`. Consult `app.ts` and the linked [identity](../identity-and-access.md), [evidence](../evidence-and-logistics.md), [payments](../payment-controls.md), [SaaS](../saas-inventory-finance.md), [channels](../channel-adapters.md) and [commercial](../commercial-policy.md) runbooks before introducing overlapping endpoints. The example target routes below are not evidence that their underlying workflow is missing.
 
@@ -277,7 +282,7 @@ The three SaaS customer sides in BP p. 7 and Pitch p. 12 are demand (players), d
 
 Test billing already implements trial, active, past-due/grace, canceled/expired and recovery states, immutable plan versions, invoices and deduplicated included usage. It defaults disabled until configured. Remaining work is hosted completion/renewal/dunning acceptance, approved commercial accounting and any chosen plan-change/proration behavior. Downgrades preserve records, support and recovery while limiting new activity.
 
-Later partner integrations receive API credentials with organization scope, quotas, signed outbound webhooks, delivery logs and revocation. AI Query/Match/Route uses these same scoped APIs. Retrieved artwork descriptions or seller text never authorize privileged instructions. Any transactional agent command requires an explicit, bounded user authorization and the normal quote/payment/stock checks.
+Later partner integrations receive API credentials with organization scope, quotas, signed outbound webhooks, delivery logs and revocation. Credential-based Query/Match/Route uses these scoped APIs. Ask PixUP is a separate session-authenticated search/help service, not a consumer of delegated tool credentials or a bypass of channel activation gates. Retrieved artwork descriptions or seller text never authorize privileged instructions. Any transactional agent command requires an explicit, bounded user authorization and the normal quote/payment/stock checks.
 
 ### 10.1 Billing, fee taxonomy and deferred products
 
@@ -312,6 +317,29 @@ The BP’s IFCI inputs are price-discovery quality, holder diversity, holding-ti
 
 Query/Match/Route now provide scoped, expiring credentials, current membership/eligibility checks, quotas, replay-safe metering and timestamped read-only inventory/channel results. New results enforce publication and shared payment holds; tool execution cannot purchase, reserve stock or grant credits. Expand trust/reference-price inputs and evaluated model integrations only after source/privacy review. Any future transactional tool still needs explicit bounded user authorization and ordinary quote/payment/stock gates.
 
+### 10.3.1 Ask PixUP / PixUP Guide: implemented service
+
+The implementation is in [`assistant.ts`](../../apps/api/src/assistant.ts), [`assistant-provider.ts`](../../apps/api/src/assistant-provider.ts) and [`packages/domain/assistant.ts`](../../packages/domain/assistant.ts). `Services` registers `AssistantService`; `main.ts` injects `assistantConfiguration()` into the API service. Migration 016 adds `assistant_request_limits`, with actor-scoped row policies and one expiring lease per account. No chat-history tables, worker jobs, dependencies or paid-tool usage records are introduced. Apply migration 016 and reapply `infra/database/runtime-roles.sql` before hardened startup; role validation now requires seven RLS-enabled tables.
+
+| Contract | Implemented behavior |
+| --- | --- |
+| `GET /v1/assistant/config` | Returns only `{ ai_available: boolean }`; never exposes the key or provider credentials |
+| `POST /v1/assistant/messages` | Requires session, CSRF/origin checks, completed MFA and an active unrestricted account; accepts `message`, bounded `history` and explicit `use_ai` |
+| Input | Message: 1–2,000 characters; at most 6 history messages, each up to 4,000 characters with user/assistant roles; unknown fields are rejected; `use_ai` defaults false |
+| Search plan | Strict `cards`, `sellers`, `buyers`, `orders` or `help` intent; query up to 200 characters; optional supported category and maximum price in integer USD cents |
+| Response | `answer` up to 4,000 characters, `mode` (`local` or `ai`), explanatory `notice`, at most 12 results with server-created internal links and optional price/artwork |
+| Budgets | 12 requests per 60-second window per account across API processes; one in-flight lease per account, expiring after 60 seconds; at most 2 provider calls, each with a 12-second timeout and 400/800 output-token limits for plan/answer |
+
+Retrieval uses parameterized SQL, not model-authored commands. Card/seller search checks active specimen listings, parent publication, closed sellers and channel allocation; it returns a narrow public projection. Buyer search binds `seller_id` to the actor; order search binds either `buyer_id` or `seller_id` to that actor. Staff do not receive broader assistant search scope. Results exclude account emails, addresses, private unlisted inventory and internal rights evidence. There is no general buyer/member directory, vector index or arbitrary website crawler. Workflow help comes from a curated registry in the service. Checkout still rechecks current stock, holds and eligibility.
+
+Default local mode uses deterministic keyword/category/budget parsing and curated help. `ASSISTANT_PROVIDER=openai` requires server-only `OPENAI_API_KEY`; `OPENAI_ASSISTANT_MODEL` defaults to `gpt-4.1-mini`. Configuration is opt-in and explicit OpenAI mode without a key fails startup. For a user-opted-in public request, the adapter validates a structured plan, executes permitted retrieval, then requests a grounded plain-text answer. Unknown/invalid plans, incomplete output and provider failures fall back to local behavior without exposing provider errors. Provider calls occur outside database transactions and have no automatic billable retry.
+
+Locally recognized buyer/order requests bypass the provider. A model-selected buyer/order plan also uses a local answer and never sends private database results to AI. User-authored messages and recent history may still contain sensitive text; opt-in copy must explain that boundary. Requests set `store: false`, without promising zero provider retention. The model cannot mutate accounts, buy/reserve stock, message members or approve operations. Result URLs remain server-derived and frontend output is literal text.
+
+Frontend-only sample records are not retrieved from the database and cannot grant consent, permissions, credits, moderation approval or channel activation. Keep these fixtures separate from persisted demo seed records. For exact configuration and limitations, see the [assistant runbook](../assistant.md).
+
+Before wider rollout, validate a real configured provider, answer/retrieval quality, adversarial descriptions and prompts, data handling, cost ceilings and latency. Shared database quotas now work across API processes; verify deployment capacity and provider spend ceilings before broader rollout. No live model acceptance or autonomous commerce capability is established by the existing tests.
+
 ### 10.4 Metrics, cost and category contracts (R15/R16)
 
 Keep a versioned metric registry with event basis, inclusion/exclusion, unit, time window, numerator/denominator, correction treatment and finance owner. Distinguish gross/net GMV, gross receipts, owned-stock revenue/cost/margin, agency/consignment fees, VIA services, subscription MRR/ARR, operating cash, seller/creator liabilities, credit obligations, VACV and funded FPCR. Define shipping/tax/refund treatment explicitly. Never add full transaction value to its fee income and label the sum recognized revenue. A zero or undefined denominator produces an unavailable metric, not a guessed ratio.
@@ -322,7 +350,9 @@ The [planning index](README.md#forecast-and-metric-controls) records the deck fo
 
 ## 11. Verification plan
 
-The latest [review record](../code-review-2026-10-30.md) reports **139 backend tests, 23 browser journeys, production build and PostgreSQL checks passing**. Coverage includes migrations 001–014, role/tenant isolation and actor-context reset, hidden-parent publication denial, immutable approvals/snapshots, payment and physical holds, identity recovery, evidence, billing and channel recovery. Runtime LOGIN roles were also tested with SCRAM authentication; CI now invokes this separate suite alongside restore/load checks. Stripe test API fixtures cover full and partial refunds, but hosted Checkout/Connect acceptance and real physical providers remain unverified. This documentation-only revision records existing evidence without rerunning tests.
+The [current-pilot gap review](05-current-pilot-gap-review.md) records this implementation's actual verification. Earlier evidence remains in the [cross-feature review](../code-review-2026-10-30.md) and [Community Hub runbook](../community-hub.md).
+
+Assistant coverage includes public/unpublished/private-record boundaries, participant-only buyers/orders (including staff), auth/MFA/privacy restrictions, strict input limits, price/follow-up filters, parameterized searches, explicit AI opt-in, invalid-plan/provider fallback, HTTP/CSRF/no-cache behavior and the Responses transport contract. Shared-budget tests cover separate service instances, window expiry, abandoned leases and stale-release protection. The PostgreSQL recovery suite uses separate API pools to check quota persistence/concurrency, retrieval and nonowner row policies. Live AI calls and broader hosted payment/identity/physical-provider acceptance remain outstanding.
 
 Retain those regression suites while adding the tests below to the responsible epic. Run finance/concurrency cases against separate PostgreSQL connections, not only the single-process embedded database.
 
@@ -340,6 +370,8 @@ Retain those regression suites while adding the tests below to the responsible e
 | SaaS and fees     | Duplicate/out-of-order invoice events, membership/org entitlements, metering replay, downgrade without loss of records, VIA fee independence, no duplicate fee-stage charging                                     |
 | Governance/data   | Consignment vs buyback title, concurrent own-issued concentration admission, unpriced/stale VACV exclusions, identical source rules, 6Re authority/lineage, reversed price observations, agency IFCI exclusion    |
 | Partner/reporting | Multiple resource owners, agreement changes, one sale across channel/task tags, commission reversal, actual cost basis, undefined/zero metric denominators, external/test observations excluded from platform GMV |
+| Assistant | Preserve current privacy/scope and fallback tests; add live-provider, relevance, prompt-injection, distributed quota, load and PostgreSQL role acceptance before wider rollout |
+| Preview data | Verify fixtures never write transactional state, enable gates or enter authoritative search/metrics; do not infer production evidence from sample screens |
 | Migration         | Pilot IDs/history preserved, restrictive ownership backfill, clean production seed policy, demo data excluded from live reports                                                                                   |
 
 Use unit/property-based tests for financial and stock invariants, real PostgreSQL integration tests for constraints and locking, provider contract tests, and a small number of end-to-end journeys. Avoid substituting mocked database tests for the concurrency behavior that matters.
@@ -356,12 +388,13 @@ The controlled launch gate requires:
 6. Restore drill achieves agreed RPO/RTO; runbooks cover PSP outage, lost item, counterfeit claim, data incident and account takeover.
 7. Support and warehouse staff complete realistic exercises for damaged return, rejected authentication, failed payout and credit dispute.
 8. Product completes the frontend acceptance gates, including accessibility and recoverable failure states.
+9. If external AI is enabled, validate its deployment configuration, explicit user opt-in, data handling, cost/latency and fallback behavior; keep broader rollout gated on live-provider evidence and deployment verification of the implemented shared quotas.
 
 Deliver schema/migrations, OpenAPI/event specs, policy examples, permission matrix, dashboards, reconciliation procedures, evidence-retention policy, infrastructure definitions and on-call ownership with the release. The output of this workstream is an operable transaction system, not only a set of endpoints.
 
 ## 13. Next two delivery cycles
 
-1. **Cycle 1 (B0/B1/B2/B4/B10):** use the implemented commercial register to collect actual D1–D16 owner decisions; configure and validate hosted identity/email, Checkout/Connect and storage/scanner providers; provision independent staff/runtime roles. Preserve the six cross-feature regressions and run CI's separate PostgreSQL role/recovery suite. Outputs: provider evidence, approved deployment configuration, unresolved-decision register and re-estimated backlog.
-2. **Cycle 2 (B3/B5/B6/B7/B9–B12):** implement approved rights/title/refund/tax and carrier requirements; close dispute/transfer/bank recovery gaps; validate hosted subscription lifecycle and real device/stream/fulfillment integration. Extend tenant policies, signer custody and managed restore/alerts using existing foundations. Outputs: staging acceptance evidence, updated recovery runbooks and frontend state contracts.
+1. **Cycle 1 (B0/B1/B2/B4/B10/B13):** use the implemented commercial register to collect actual D1–D16 owner decisions; configure and validate hosted identity/email, Checkout/Connect and storage/scanner providers; provision independent staff/runtime roles. Preserve the six cross-feature regressions and run CI's separate PostgreSQL role/recovery suite. Include B13 provider configuration/acceptance and keep private assistant results local. Outputs: provider evidence, approved deployment configuration, unresolved-decision register and re-estimated backlog.
+2. **Cycle 2 (B3/B5/B6/B7/B9–B13):** implement approved rights/title/refund/tax and carrier requirements; close dispute/transfer/bank recovery gaps; validate hosted subscription lifecycle and real device/stream/fulfillment integration. Extend tenant policies, signer custody and managed restore/alerts using existing foundations. Add B13 relevance/adversarial evaluations and deployment-wide spend alerts before broader AI rollout. Outputs: staging acceptance evidence, updated recovery runbooks and frontend state contracts.
 
 Do not remove the explicit demo boundary until a separate live adapter path, production configuration checks and the paid-pilot gates are in place. Prioritize provider and physical/cash lifecycle acceptance over expanding the implemented channel/tool pilots or speculative automated valuations.

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { totp } from '../../packages/domain/identity-secrets';
 test('authenticator enrollment, one-time recovery and session revocation use real local account APIs', async ({
   page,

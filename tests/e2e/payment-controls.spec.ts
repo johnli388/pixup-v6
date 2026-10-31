@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 async function login(page: Page, role: string) {
   await page.goto('/login');
   await page.getByLabel('Email address').fill(`${role}@pixup.demo`);

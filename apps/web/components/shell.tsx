@@ -21,6 +21,7 @@ import {
   Palette,
   Settings,
   Activity,
+  Bot,
 } from 'lucide-react';
 import { useSession } from './providers';
 const main = [
@@ -29,6 +30,7 @@ const main = [
   ['/collections', 'Collections', Layers],
   ['/channels', 'Channels', Store],
   ['/community', 'Community Hub', Activity],
+  ['/assistant', 'AI assistant', Bot],
 ] as const;
 const personal = [
   ['/account/collection', 'My collection', Layers],
@@ -193,6 +195,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </Link>
         </footer>
       </div>
+      {path !== '/assistant' && (
+        <nav aria-label="Assistant shortcut">
+          <Link className="assistant-launcher" href="/assistant">
+            <Bot size={20} /> Ask PixUP
+          </Link>
+        </nav>
+      )}
     </>
   );
 }

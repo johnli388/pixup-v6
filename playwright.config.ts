@@ -28,6 +28,7 @@ export default defineConfig({
         COMMUNITY_WRITES_ENABLED: 'true',
         DATA_DIR: dataDir,
         APP_MODE: 'demo',
+        ASSISTANT_PROVIDER: 'local',
         IDENTITY_ENCRYPTION_KEY: 'ab'.repeat(32),
         IDENTITY_MAIL_PROVIDER: 'disabled',
         STAFF_MFA_REQUIRED: 'false',

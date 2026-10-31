@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import { generateKeyPairSync, sign, randomUUID } from 'node:crypto';
 async function login(page: Page, role: string) {

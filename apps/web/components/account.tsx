@@ -46,7 +46,7 @@ import {
 export function Login() {
   const router = useRouter(),
     client = useQueryClient();
-  const { request, toast } = useSession();
+  const { request, toast, loading } = useSession();
   const [register, setRegister] = useState(false),
     [email, setEmail] = useState('collector@pixup.demo'),
     [password, setPassword] = useState('PixupDemo2026!'),
@@ -55,6 +55,7 @@ export function Login() {
     [error, setError] = useState('');
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -116,6 +117,7 @@ export function Login() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="name"
+                disabled={loading || busy}
               />
             </label>
           )}
@@ -127,6 +129,7 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              disabled={loading || busy}
             />
           </label>
           <label className="field">
@@ -139,16 +142,18 @@ export function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={register ? 'new-password' : 'current-password'}
+              disabled={loading || busy}
             />
           </label>
           <ErrorNotice error={error} />
-          <button className="button full" disabled={busy}>
+          <button className="button full" disabled={loading || busy}>
             {busy ? 'One moment…' : register ? 'Create account' : 'Sign in'}
             <ArrowRight size={17} />
           </button>
         </form>
         <button
           className="text-link"
+          disabled={loading || busy}
           onClick={() => {
             setRegister(!register);
             setError('');
@@ -167,6 +172,7 @@ export function Login() {
               {['collector', 'creator', 'seller', 'ops'].map((role) => (
                 <button
                   key={role}
+                  disabled={loading || busy}
                   onClick={() => {
                     setEmail(`${role}@pixup.demo`);
                     setPassword('PixupDemo2026!');

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test('finance records a commercial proposal without self-approval or production activation', async ({
   page,

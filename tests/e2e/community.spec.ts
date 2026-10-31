@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import { totp } from '../../packages/domain/identity-secrets';
 async function login(page: Page, email: string, password = 'PixupDemo2026!') {
@@ -130,6 +130,7 @@ test('member story, review, reply, report and independent appeal work across bro
   await page.reload();
   await expect(hidden).toContainText('Appeal: overturned');
   await reader.goto('/community/topics');
+  await expect(reader.locator('.community')).toBeVisible();
   const axe = await new AxeBuilder({ page: reader })
     .include('.community')
     .withTags(['wcag2a', 'wcag2aa'])

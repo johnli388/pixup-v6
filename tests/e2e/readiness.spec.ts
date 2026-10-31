@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 async function api(page: Page, path: string, body: unknown) {
   const me = await (await page.request.get('/api/me')).json();
   return page.request.post('/api' + path, {

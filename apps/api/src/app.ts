@@ -1,4 +1,7 @@
 import { CommunityService } from './community';
+import { AssistantService } from './assistant';
+import type { AssistantProvider } from './assistant-provider';
+import { assistantInput, assistantResponse } from '../../../packages/domain/assistant';
 import * as community from '../../../packages/domain/community';
 import { staffPermissions } from '../../../packages/domain/contracts';
 import { withDatabaseActor } from '../../../packages/database/context';
@@ -153,6 +156,7 @@ const support = z
   .strict();
 
 export class Services {
+  assistant: AssistantService;
   community: CommunityService;
   commercial: CommercialService;
   identity: IdentityService;
@@ -184,8 +188,10 @@ export class Services {
     billingOptions: BillingOptions = {},
     evidenceOptions: EvidenceOptions = {},
     identityOptions: IdentityOptions = {},
+    assistantProvider?: AssistantProvider,
   ) {
     privacyPolicy();
+    this.assistant = new AssistantService(db, assistantProvider);
     this.community = new CommunityService(db);
     this.commercial = new CommercialService(db);
     this.billing = new BillingService(db, billingOptions);
@@ -1277,6 +1283,14 @@ export function createApp(s: Services) {
     res.clearCookie('pixup_session', { path: '/' });
     return { ok: true };
   });
+  route('get', '/assistant/config', () => s.assistant.config());
+  route(
+    'post',
+    '/assistant/messages',
+    (r, _res, d) => s.assistant.reply(user(r), d),
+    assistantInput,
+    assistantResponse,
+  );
   route('get', '/catalog', () => s.catalog.browse());
   route('get', '/assets/:id', (r) => s.catalog.item(param(r), r.actor));
   route('get', '/collections/:id', (r) => s.catalog.collection(param(r)));

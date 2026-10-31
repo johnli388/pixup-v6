@@ -43,6 +43,10 @@ Use **Settings → Sign out / switch demo account** to change roles. These are s
 
 ## Try the complete workflows
 
+**PixUP Guide:** open **AI assistant** in the navigation or use **Ask PixUP** from any page. Search cards by title/category/budget, find public seller listings, look up buyer references from your own sales, search your orders, and ask about PixUP workflows. Local search/help works immediately. Optional AI answers require `ASSISTANT_PROVIDER=openai`, a server-only `OPENAI_API_KEY`, and a restart; users opt in in the chat. See [assistant configuration, privacy and verification](docs/assistant.md).
+
+The [current-pilot gap review](docs/planning/05-current-pilot-gap-review.md) records shared assistant budgets (migration 016), dedicated route recovery, unknown-route HTTP 404s and preview isolation checks. Hardened PostgreSQL deployments must apply migration 016 and refresh runtime grants before startup.
+
 **Local demo purchase and refund (`PAYMENT_PROVIDER=demo`):** sign in as Collector → Marketplace → choose a PixUP-owned item → Make it yours → choose vault custody → optionally use credits → Review total → Confirm demo purchase. The order survives a refresh. A vault refund restores original ownership and eligible credits while reversing the journal.
 
 **Publish a collection:** sign in as Creator → Creator Studio → New collection → select a sample design or upload a PNG/JPEG/WebP → enter rights evidence → Create draft → Submit for review. Switch to Operations → Publishing → approve the rights submission → receive assessed stock. Switch back to Creator → set a price and publish. Individual specimens become purchasable.

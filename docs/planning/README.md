@@ -8,10 +8,11 @@ Updated October 30, 2026. Status: PDF-reviewed incremental target, with commerci
 2. [Backend development](02-backend-development-plan.md): implementation sequence, APIs, state machines, financial controls, testing, and delivery gates.
 3. [UI and frontend development](03-ui-frontend-development-plan.md): personas, navigation, screens, user journeys, design system, frontend architecture, and acceptance criteria.
 4. [Community Hub development](04-community-hub-development-plan.md): discussions, stories, knowledge sharing, comments, topics, moderation, privacy, APIs and phased delivery, now with a gated text-pilot implementation through migration 015. It is a user-requested extension, not a PDF-derived requirement.
+5. [Current-pilot gap review](05-current-pilot-gap-review.md): gaps implemented after checking the three core plans, verification results, deployment steps and the remaining roadmap.
 
 This review covers all 40 pages of [PixUP-BP-J.pdf](../../PixUP-BP-J.pdf) and all 18 pages of [PixUP-Pitch-J.pdf](../../PixUP-Pitch-J.pdf). Page references below use PDF page numbers; BP appendices A1–A16 are PDF pages 25–40. The separate PixUP-Brief.docx was outside the requested review. Business projections are treated as planning inputs, not independently verified forecasts. External documentation is used only to check relevant implementation choices and limitations.
 
-The October 30 review adds explicit source-registration versus VIA states, own-issuance concentration controls, five-factor partner agreements, early manual channel experiments, financial metric definitions and category/entity boundaries. The architecture, backend and frontend plans now reflect migrations 001–014 and the cross-feature code review. [Implementation status](../implementation-status.md) records what runs and its validation limits. Requirement IDs R01–R16 remain shared by the core plans; B0–B12 and F0–F6 identify their delivery workstreams. Community Hub uses CH0–CH5; its text pilot is implemented through migration 015, with rollout, operational acceptance and later media/public increments kept separate.
+The October 30 review adds explicit source-registration versus VIA states, own-issuance concentration controls, five-factor partner agreements, early manual channel experiments, financial metric definitions and category/entity boundaries. The architecture, backend and frontend plans now reflect migrations 001–016, Ask PixUP and the current-pilot gap review. [Implementation status](../implementation-status.md) records what runs and its validation limits. Requirement IDs R01–R16 remain shared by the core plans; B0–B13 and F0–F7 identify their delivery workstreams. Community Hub uses CH0–CH5; its text pilot is implemented through migration 015, with rollout, operational acceptance and later media/public increments kept separate.
 
 ## Recommended product direction
 
@@ -85,6 +86,8 @@ D1's web-first/invited-creator sequence is confirmed. The other defaults constra
 | Pool health, BP p. 37                          | Bottom-20%-median/all-assets-median 0.25–0.35; density 1.3–1.8×; long-tail exits 5–12% annually; FPCR exit allocation 5%, target coverage 60% | Shadow only; define cohorts, time windows, denominator, unpriced exclusions and authority. No automated reserve sweep or price guarantee                       |
 
 Each metric needs an owner, version, eligible events/population, period/as-of date, unit, numerator/denominator and correction treatment. Distinguish observed results from forecasts; show unavailable when a denominator or valuation is undefined. Keep GMV, gross receipts, owned-stock margin, service revenue, subscription MRR/ARR, liabilities, credits, VACV and actual funded reserves separate. Verified external trades can inform price references without increasing PixUP GMV. Demo/test records never populate live metrics.
+
+See the [current-pilot implementation gap review](05-current-pilot-gap-review.md) for completed software gaps, test evidence and the separate rollout/roadmap backlog.
 
 ## Scope and milestones
 
