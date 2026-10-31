@@ -1,10 +1,11 @@
 'use client';
+import { useI18n } from './i18n';
 import { CommercialTerms } from './commercial';
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAction, useData, useSession, type Row } from './providers';
-import { AccountGate, ErrorNotice, Loading, PageTitle, Status, money, Empty } from './ui';
+import { AccountGate, ErrorNotice, Loading, PageTitle, Status, Empty } from './ui';
 import { pilotChannels } from './channel-samples';
 import { PilotChannelDetail, PilotChannelDirectory } from './channel-pilot-preview';
 
@@ -31,6 +32,8 @@ function ActionForm({
   submit?: string;
   done?: (r: Row) => void;
 }) {
+  const { t: tr } = useI18n();
+
   const action = useAction();
   async function send(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,11 +48,13 @@ function ActionForm({
       <h2>{title}</h2>
       {fields.map((f) => (
         <label key={f.name}>
-          {f.label}
+          {tr(f.label)}
           {f.options ? (
             <select name={f.name} defaultValue={f.value}>
               {f.options.map((o) => (
-                <option key={o}>{o}</option>
+                <option key={o} value={o}>
+                  {tr(o)}
+                </option>
               ))}
             </select>
           ) : f.type === 'textarea' ? (
@@ -67,7 +72,7 @@ function ActionForm({
       ))}
       <ErrorNotice error={action.error} />
       <button className="button secondary" disabled={action.busy}>
-        {action.busy ? 'Saving…' : submit}
+        {action.busy ? tr('Saving…') : tr(submit)}
       </button>
     </form>
   );
@@ -83,17 +88,21 @@ export function Channels({ id }: { id?: string }) {
   return id ? <ChannelDetail id={id} /> : <ChannelDirectory />;
 }
 function ChannelDirectory() {
+  const { t: tr } = useI18n();
+
   const { data, error, isPending } = useData<Row[]>('/channels');
   if (isPending) return <Loading />;
   return (
     <>
       <PageTitle
-        eyebrow="PHYSICAL CHANNELS"
-        title="More ways to collect"
-        description="Explore local pilot channels. Each purchase uses the same inventory, order and payment records."
+        eyebrow={tr('PHYSICAL CHANNELS')}
+        title={tr('More ways to collect')}
+        description={tr(
+          'Explore local pilot channels. Each purchase uses the same inventory, order and payment records.',
+        )}
       />
       <ErrorNotice error={error} />
-      {!!data?.length && <h2>Available channels</h2>}
+      {!!data?.length && <h2>{tr('Available channels')}</h2>}
       <div className="channel-grid">
         {data?.map((c) => (
           <Link className="panel channel-card" href={`/channels/${c.id}`} key={c.id}>
@@ -102,9 +111,9 @@ function ChannelDirectory() {
             <Status status={c.status} />
             <p>{c.terms.description}</p>
             {c.kind === 'cvm' && (
-              <p>{c.online ? 'Device online' : 'Device offline · purchases unavailable'}</p>
+              <p>{c.online ? tr('Device online') : tr('Device offline · purchases unavailable')}</p>
             )}
-            <span className="text-link">View channel →</span>
+            <span className="text-link">{tr('View channel →')}</span>
           </Link>
         ))}
       </div>
@@ -113,6 +122,8 @@ function ChannelDirectory() {
   );
 }
 function ChannelDetail({ id }: { id: string }) {
+  const { t: tr, money, dateTime } = useI18n();
+
   const { user } = useSession(),
     router = useRouter();
   const { data: c, error, isPending, refetch } = useData<Row>(`/channels/${id}`);
@@ -153,46 +164,55 @@ function ChannelDetail({ id }: { id: string }) {
       <div className="panel channel-terms">
         <Status status={c.status} />
         <p>
-          Terms version {c.terms_version}
-          {c.deadline && ` · Deadline ${new Date(c.deadline).toLocaleString()}`}
+          {tr('Terms version ')}
+          {c.terms_version}
+          {c.deadline && ` · Deadline ${dateTime(c.deadline)}`}
         </p>
         {c.kind === 'cvm' && (
           <p>
             {c.online
-              ? 'Device online. Payment is followed by a confirmed physical dispense.'
-              : 'Device offline. New paid vends are disabled.'}{' '}
-            An uncertain dispense waits for staff review; do not pay a second time.
+              ? tr('Device online. Payment is followed by a confirmed physical dispense.')
+              : tr('Device offline. New paid vends are disabled.')}{' '}
+            {tr('An uncertain dispense waits for staff review; do not pay a second time.')}
           </p>
         )}
         {c.kind === 'liveup' && (
           <p>
-            Your paid pack stays allocated until the host records its physical reveal. Opening
-            records do not certify the revealed items; VIA review is separate.
+            {tr(
+              'Your paid pack stays allocated until the host records its physical reveal. Opening records do not certify the revealed items; VIA review is separate.',
+            )}
           </p>
         )}
         {c.kind === 'goup' && (
           <p>
-            {c.terms.target_units} participant slots · Shared shipping{' '}
-            {money(c.terms.shipping_total_cents)}. Pledge your fixed share before the group locks.
-            Each participant pays their own order. A deadline shortfall requires refund review
-            before any shipment.
+            {c.terms.target_units}
+            {tr(' participant slots · Shared shipping')} {money(c.terms.shipping_total_cents)}
+            {tr(
+              '. Pledge your fixed share before the group locks. Each participant pays their own order. A deadline shortfall requires refund review before any shipment.',
+            )}
           </p>
         )}
         {c.kind === 'waxup' && (
           <p>
-            Approved business buyers only · {c.terms.units_per_case} units per sealed case · Cash
-            only. Conditional return: {c.terms.return_mode}, within {c.terms.return_days} days of
-            payment. Returns require inspection and do not grant automatic credits or payouts.
+            {tr('Approved business buyers only · ')}
+            {c.terms.units_per_case}
+            {tr(' units per sealed case · Cash only. Conditional return: ')}
+            {c.terms.return_mode}
+            {tr(', within ')}
+            {c.terms.return_days}
+            {tr(
+              ' days of payment. Returns require inspection and do not grant automatic credits or payouts.',
+            )}
           </p>
         )}
         <button className="button secondary" onClick={() => void refetch()}>
-          Refresh availability
+          {tr('Refresh availability')}
         </button>
       </div>
       <ErrorNotice error={error || action.error} />
       {!user && (
         <Link className="button" href="/login">
-          Sign in to participate
+          {tr('Sign in to participate')}
         </Link>
       )}
       {user && c.kind !== 'waxup' && (
@@ -205,23 +225,29 @@ function ChannelDetail({ id }: { id: string }) {
               setQuote(null);
             }}
           />
-          Use eligible ecosystem credits
+          {tr('Use eligible ecosystem credits')}
         </label>
       )}
       <div className="channel-grid">
         {c.items.map((item: Row) => (
           <article className="panel" key={item.id}>
-            <span className="eyebrow">Slot {item.slot}</span>
+            <span className="eyebrow">
+              {tr('Slot ')}
+              {item.slot}
+            </span>
             <h2>{item.title}</h2>
             <Status status={item.listing_status} />
             <p>
               {item.kind === 'sealed_pack'
-                ? 'Physical sealed pack · contents unverified'
+                ? tr('Physical sealed pack · contents unverified')
                 : `VIA: ${item.certification}`}{' '}
               · {money(item.price_cents)}
             </p>
             {['goup', 'waxup'].includes(c.kind) && (
-              <p>Shipping share: {money(item.shipping_cents)}</p>
+              <p>
+                {tr('Shipping share: ')}
+                {money(item.shipping_cents)}
+              </p>
             )}
             {c.kind === 'goup' && c.status === 'open' ? (
               <>
@@ -237,10 +263,10 @@ function ChannelDetail({ id }: { id: string }) {
                   }
                 >
                   {item.is_pledged_by_me
-                    ? 'Your share is pledged'
+                    ? tr('Your share is pledged')
                     : item.pledged
-                      ? 'Share pledged'
-                      : 'Accept terms and pledge this share'}
+                      ? tr('Share pledged')
+                      : tr('Accept terms and pledge this share')}
                 </button>
                 {item.is_pledged_by_me && (
                   <button
@@ -254,7 +280,7 @@ function ChannelDetail({ id }: { id: string }) {
                       )
                     }
                   >
-                    Withdraw pledge
+                    {tr('Withdraw pledge')}
                   </button>
                 )}
               </>
@@ -273,30 +299,40 @@ function ChannelDetail({ id }: { id: string }) {
                 }
                 onClick={() => void review(item)}
               >
-                Review purchase
+                {tr('Review purchase')}
               </button>
             )}
           </article>
         ))}
       </div>
       {quote && selected && (
-        <section className="panel channel-form" aria-label="Review channel purchase">
-          <h2>Review {selected.title}</h2>
+        <section className="panel channel-form" aria-label={tr('Review channel purchase')}>
+          <h2>
+            {tr('Review ')}
+            {selected.title}
+          </h2>
           <CommercialTerms snapshot={quote.commercial_snapshot} />
           <p>
-            Price {money(quote.price_cents)} (includes seller fee {money(quote.fee_cents)}) ·
-            Shipping {money(quote.shipping_cents)}
+            {tr('Price ')}
+            {money(quote.price_cents)}
+            {tr(' (includes seller fee ')}
+            {money(quote.fee_cents)}
+            {tr(') · Shipping ')}
+            {money(quote.shipping_cents)}
           </p>
           <p>
-            {quote.credit_units} credits · Pay {money(quote.total_cents)}
+            {quote.credit_units}
+            {tr(' credits · Pay ')}
+            {money(quote.total_cents)}
           </p>
           <p>
-            Quote expires {new Date(quote.expires_at).toLocaleTimeString()}. Payment confirmation
-            does not confirm physical fulfillment.
+            {tr('Quote expires ')}
+            {dateTime(quote.expires_at)}
+            {tr('. Payment confirmation does not confirm physical fulfillment.')}
           </p>
           {['goup', 'waxup'].includes(c.kind) && (
             <label>
-              Delivery address
+              {tr('Delivery address')}
               <textarea value={address} onChange={(e) => setAddress(e.target.value)} />
             </label>
           )}
@@ -307,17 +343,17 @@ function ChannelDetail({ id }: { id: string }) {
             }
             onClick={() => void purchase()}
           >
-            Confirm terms and continue to payment
+            {tr('Confirm terms and continue to payment')}
           </button>
           <button className="button secondary" onClick={() => setQuote(null)}>
-            Close review
+            {tr('Close review')}
           </button>
         </section>
       )}
       {c.kind === 'cvm' && user && (
         <section className="panel">
           <ActionForm
-            title="Register a physical return"
+            title={tr('Register a physical return')}
             path={`/channels/${id}/returns`}
             fields={[{ name: 'asset_id', label: 'Your item registry ID' }]}
             done={(r) => setReceipt(r.id)}
@@ -325,8 +361,9 @@ function ChannelDetail({ id }: { id: string }) {
           />
           {receipt && (
             <p role="status">
-              Return receipt <code>{receipt}</code>. Present this reference at the device. No
-              credits granted.
+              {tr('Return receipt ')}
+              <code>{receipt}</code>
+              {tr('. Present this reference at the device. No credits granted.')}
             </p>
           )}
         </section>
@@ -342,6 +379,8 @@ export function ChannelWorkspace() {
   );
 }
 function Workspace() {
+  const { t: tr, dateTime } = useI18n();
+
   const { user } = useSession();
   const { data, error, isPending } = useData<Row>('/channels/workspace');
   const warehouse = !!user?.staff_permissions.includes('warehouse'),
@@ -356,29 +395,34 @@ function Workspace() {
   return (
     <>
       <PageTitle
-        eyebrow="CHANNEL OPERATIONS"
-        title="Channel workspace"
-        description="Assign physical stock, track paid allocations and record witnessed fulfillment. Pilot activation is separate from production approval."
+        eyebrow={tr('CHANNEL OPERATIONS')}
+        title={tr('Channel workspace')}
+        description={tr(
+          'Assign physical stock, track paid allocations and record witnessed fulfillment. Pilot activation is separate from production approval.',
+        )}
       />
       <ErrorNotice error={error} />
       {created && (
         <div className="panel" role="status">
           <p>
-            Created reference: <code>{created.id || created.asset_id}</code>
+            {tr('Created reference: ')}
+            <code>{created.id || created.asset_id}</code>
           </p>
           {created.listing_id && (
             <p>
-              Listing ID for allocation: <code>{created.listing_id}</code>
+              {tr('Listing ID for allocation: ')}
+              <code>{created.listing_id}</code>
             </p>
           )}
         </div>
       )}
       {warehouse && (
         <details className="panel">
-          <summary>Pilot activation gates</summary>
+          <summary>{tr('Pilot activation gates')}</summary>
           <p>
-            Activate CVM and LiveUP first, GOUP and WaxUP next, then AI tools. Disabling a gate
-            prevents new transactions; existing orders remain recoverable.
+            {tr(
+              'Activate CVM and LiveUP first, GOUP and WaxUP next, then AI tools. Disabling a gate prevents new transactions; existing orders remain recoverable.',
+            )}
           </p>
           <div className="channel-grid">
             {gates?.map((g) => (
@@ -395,9 +439,9 @@ function Workspace() {
         </details>
       )}
       <details className="panel">
-        <summary>Create a channel</summary>
+        <summary>{tr('Create a channel')}</summary>
         <ActionForm
-          title="New pilot channel"
+          title={tr('New pilot channel')}
           path="/channels"
           done={setCreated}
           fields={[
@@ -450,9 +494,9 @@ function Workspace() {
       </details>
       {warehouse && (
         <details className="panel">
-          <summary>Register sealed physical stock</summary>
+          <summary>{tr('Register sealed physical stock')}</summary>
           <ActionForm
-            title="Warehouse stock receipt"
+            title={tr('Warehouse stock receipt')}
             path="/ops/channels/packs"
             done={setCreated}
             fields={[
@@ -476,9 +520,9 @@ function Workspace() {
       )}
       {finance && (
         <details className="panel">
-          <summary>Business buyer approval</summary>
+          <summary>{tr('Business buyer approval')}</summary>
           <ActionForm
-            title="Approve or revoke a business buyer"
+            title={tr('Approve or revoke a business buyer')}
             path="/ops/channels/businesses"
             fields={[
               { name: 'user_id', label: 'Buyer user ID' },
@@ -495,20 +539,21 @@ function Workspace() {
       )}
       {warehouse && (
         <details className="panel">
-          <summary>Pin the simulator command verification key</summary>
+          <summary>{tr('Pin the simulator command verification key')}</summary>
           <p>
-            Copy this public key to command-public.pem on the simulator. Configure a persistent
-            server signing key before device integration.
+            {tr(
+              'Copy this public key to command-public.pem on the simulator. Configure a persistent server signing key before device integration.',
+            )}
           </p>
           <textarea
-            aria-label="Server command public key"
+            aria-label={tr('Server command public key')}
             readOnly
             rows={4}
             value={data?.command_public_key || ''}
           />
         </details>
       )}
-      <h2>Channels and stock</h2>
+      <h2>{tr('Channels and stock')}</h2>
       {data?.contexts.map((c: Row) => (
         <details className="panel" key={c.id}>
           <summary>
@@ -516,12 +561,12 @@ function Workspace() {
           </summary>
           <p>
             <Link className="text-link" href={`/channels/${c.id}`}>
-              Open buyer view
+              {tr('Open buyer view')}
             </Link>{' '}
             · <code>{c.id}</code>
           </p>
           <ActionForm
-            title="Assign existing stock"
+            title={tr('Assign existing stock')}
             path={`/channels/${c.id}/allocations`}
             fields={[
               { name: 'listing_id', label: 'Listing ID' },
@@ -530,13 +575,13 @@ function Workspace() {
           />
           {c.kind === 'goup' && c.status === 'open' && (
             <ActionForm
-              title="Lock fully pledged group"
+              title={tr('Lock fully pledged group')}
               path={`/channels/${c.id}/lock`}
               submit="Lock shares and enable participant payments"
             />
           )}
           <ActionForm
-            title="Channel availability"
+            title={tr('Channel availability')}
             path={`/channels/${c.id}/status`}
             fields={[
               {
@@ -549,7 +594,7 @@ function Workspace() {
           />
           {warehouse && c.kind === 'cvm' && (
             <ActionForm
-              title="Revoke device identity"
+              title={tr('Revoke device identity')}
               path={`/ops/channels/devices/${c.id}/revoke`}
               submit="Revoke device"
             />
@@ -559,13 +604,15 @@ function Workspace() {
             .map((a: Row) => (
               <details key={a.id}>
                 <summary>
-                  Slot {a.slot} · {a.state} · {a.listing_status}
+                  {tr('Slot ')}
+                  {a.slot} · {a.state} · {a.listing_status}
                 </summary>
                 <p>
-                  Asset <code>{a.asset_id}</code>
+                  {tr('Asset ')}
+                  <code>{a.asset_id}</code>
                 </p>
                 <ActionForm
-                  title="Release unused or refunded allocation"
+                  title={tr('Release unused or refunded allocation')}
                   path={`/channels/allocations/${a.id}/release`}
                   fields={[evidence]}
                   submit="Confirm physical return to vault"
@@ -574,35 +621,44 @@ function Workspace() {
             ))}
         </details>
       ))}
-      <h2>Fulfillment and recovery</h2>
+      <h2>{tr('Fulfillment and recovery')}</h2>
       {data?.orders.map((o: Row) => (
         <details className="panel" key={o.order_id}>
           <summary>
             {o.channel.toUpperCase()} · {o.order_id.slice(0, 8)} · {o.state}
           </summary>
           <p>
-            Order <code>{o.order_id}</code> · {o.payment_provider} · {o.order_status}
+            {tr('Order ')}
+            <code>{o.order_id}</code> · {o.payment_provider} · {o.order_status}
           </p>
-          {o.shipping_address && <p>Participant delivery address: {o.shipping_address}</p>}
+          {o.shipping_address && (
+            <p>
+              {tr('Participant delivery address: ')}
+              {o.shipping_address}
+            </p>
+          )}
           {o.state === 'refund_required' && (
             <p>
-              Physical outcome is resolved for refund review. For Stripe test orders, finance uses
-              the payment operations queue. Demo buyers can request the refund from their order.
+              {tr(
+                'Physical outcome is resolved for refund review. For Stripe test orders, finance uses the payment operations queue. Demo buyers can request the refund from their order.',
+              )}
             </p>
           )}
           {o.state === 'unknown' && (
-            <p>The slot remains blocked until staff reconciles the physical outcome.</p>
+            <p>{tr('The slot remains blocked until staff reconciles the physical outcome.')}</p>
           )}
           {o.command_expires_at && ['issued', 'unknown'].includes(o.command_state) && (
             <p>
-              Manual reconciliation opens after{' '}
-              {new Date(Date.parse(o.command_expires_at) + 300000).toLocaleString()} (command expiry
-              plus clock tolerance). Physically isolate the device before recording a final outcome.
+              {tr('Manual reconciliation opens after')}{' '}
+              {dateTime(Date.parse(o.command_expires_at) + 300000)}
+              {tr(
+                ' (command expiry plus clock tolerance). Physically isolate the device before recording a final outcome.',
+              )}
             </p>
           )}
           {warehouse && o.command_id && ['issued', 'unknown'].includes(o.command_state) && (
             <ActionForm
-              title="Reconcile physical dispense"
+              title={tr('Reconcile physical dispense')}
               path={`/ops/channels/commands/${o.command_id}/reconcile`}
               fields={[
                 {
@@ -616,7 +672,7 @@ function Workspace() {
           )}
           {o.channel === 'liveup' && o.state === 'awaiting_fulfillment' && (
             <ActionForm
-              title="Record witnessed physical reveal"
+              title={tr('Record witnessed physical reveal')}
               path={`/channels/orders/${o.order_id}/reveal`}
               fields={[
                 { name: 'recording_reference', label: 'Recording reference' },
@@ -654,7 +710,7 @@ function Workspace() {
             ['goup', 'waxup'].includes(o.channel) &&
             o.state === 'awaiting_fulfillment' && (
               <ActionForm
-                title="Confirm shipment"
+                title={tr('Confirm shipment')}
                 path={`/ops/channels/orders/${o.order_id}/fulfill`}
                 fields={[evidence]}
                 submit="Record physical dispatch"
@@ -665,11 +721,12 @@ function Workspace() {
       {data?.returns.map((r: Row) => (
         <section className="panel" key={r.id}>
           <p>
-            Device return {r.id} · {r.status}
+            {tr('Device return ')}
+            {r.id} · {r.status}
           </p>
           {r.status === 'deposited' && (
             <ActionForm
-              title="Receive return at warehouse"
+              title={tr('Receive return at warehouse')}
               path={`/ops/channels/returns/${r.id}/receive`}
               fields={[evidence]}
               submit="Receive for independent VIA review"
@@ -680,10 +737,11 @@ function Workspace() {
       {data?.wholesale_returns.map((r: Row) => (
         <section className="panel" key={r.order_id}>
           <p>
-            Wholesale return · {r.mode} · {r.note}
+            {tr('Wholesale return · ')}
+            {r.mode} · {r.note}
           </p>
           <ActionForm
-            title="Return inspection authorization"
+            title={tr('Return inspection authorization')}
             path={`/ops/channels/orders/${r.order_id}/return-decision`}
             fields={[
               { name: 'decision', label: 'Decision', options: ['approve', 'reject'] },
@@ -697,33 +755,42 @@ function Workspace() {
   );
 }
 export function ChannelOrder({ order: o }: { order: Row }) {
+  const { t: tr, money } = useI18n();
+
   const { user } = useSession();
   if (!o.channel_fulfillment) return null;
   return (
     <section className="channel-terms">
-      <h3>{o.channel.toUpperCase()} fulfillment</h3>
+      <h3>
+        {o.channel.toUpperCase()}
+        {tr(' fulfillment')}
+      </h3>
       <Status status={o.channel_fulfillment.state} />
       <p>
         <Link className="text-link" href={`/channels/${o.channel_fulfillment.context_id}`}>
-          View channel terms and availability
+          {tr('View channel terms and availability')}
         </Link>
       </p>
       {o.channel_fulfillment.state === 'refund_required' && (
         <p>
-          Refund review is required. Stripe test orders require finance reconciliation; open a
-          support case.
+          {tr(
+            'Refund review is required. Stripe test orders require finance reconciliation; open a support case.',
+          )}
         </p>
       )}
       {o.channel_fulfillment.state === 'unknown' && (
         <p>
-          Physical outcome is uncertain. Your allocation remains held while staff reconciles the
-          device. Do not repeat the purchase.
+          {tr(
+            'Physical outcome is uncertain. Your allocation remains held while staff reconciles the device. Do not repeat the purchase.',
+          )}
         </p>
       )}
       {o.channel_fulfillment.recording_reference && (
         <p>
-          Reveal recording: {o.channel_fulfillment.recording_reference} · offset{' '}
-          {o.channel_fulfillment.recording_offset_ms} ms
+          {tr('Reveal recording: ')}
+          {o.channel_fulfillment.recording_reference}
+          {tr(' · offset')} {o.channel_fulfillment.recording_offset_ms}
+          {tr(' ms')}
         </p>
       )}
       {o.pack_contents?.map((a: Row) => (
@@ -731,18 +798,21 @@ export function ChannelOrder({ order: o }: { order: Row }) {
           <Link className="text-link" href={`/items/${a.asset_id}`}>
             {a.title}
           </Link>{' '}
-          · VIA {a.certification}
+          {tr('· VIA ')}
+          {a.certification}
         </p>
       ))}
       {o.invoice && (
         <p>
-          Demo invoice {o.invoice.reference} · {money(o.invoice.amount_cents)} ·{' '}
-          {o.invoice.units_per_case} units per case
+          {tr('Demo invoice ')}
+          {o.invoice.reference} · {money(o.invoice.amount_cents)} · {o.invoice.units_per_case}
+          {tr(' units per case')}
         </p>
       )}
       {o.wholesale_return && (
         <p>
-          Return review: {o.wholesale_return.status} · {o.wholesale_return.decision_note}
+          {tr('Return review: ')}
+          {o.wholesale_return.status} · {o.wholesale_return.decision_note}
         </p>
       )}
       {o.channel === 'waxup' &&
@@ -751,7 +821,7 @@ export function ChannelOrder({ order: o }: { order: Row }) {
         !o.wholesale_return &&
         o.channel_terms.return_mode !== 'none' && (
           <ActionForm
-            title="Request conditional wholesale return"
+            title={tr('Request conditional wholesale return')}
             path={`/channels/orders/${o.id}/return`}
             fields={[{ name: 'note', label: 'Reason and stock condition', type: 'textarea' }]}
             submit="Request inspection"
@@ -768,6 +838,8 @@ export function DeveloperTools() {
   );
 }
 function Tools() {
+  const { t: tr, money, dateTime } = useI18n();
+
   const { user, refresh } = useSession();
   const { data: keys, error } = useData<Row[]>('/tools/keys');
   const [secret, setSecret] = useState(''),
@@ -812,14 +884,16 @@ function Tools() {
   return (
     <>
       <PageTitle
-        eyebrow="DEVELOPER WORKSPACE"
-        title="Scoped discovery tools"
-        description="Query public inventory, match explicit criteria, or preview a purchase route. These tools cannot reserve stock, spend money or issue credits."
+        eyebrow={tr('DEVELOPER WORKSPACE')}
+        title={tr('Scoped discovery tools')}
+        description={tr(
+          'Query public inventory, match explicit criteria, or preview a purchase route. These tools cannot reserve stock, spend money or issue credits.',
+        )}
       />
       <ErrorNotice error={error || failure} />
       <section className="panel">
         <ActionForm
-          title="Create a 30-day credential"
+          title={tr('Create a 30-day credential')}
           path="/tools/keys"
           fields={[
             { name: 'org_id', label: 'Organization', options: orgs },
@@ -840,15 +914,15 @@ function Tools() {
           done={(r) => setSecret(r.secret)}
         />
         <p>
-          The secret is returned once and kept only in this page’s memory. Copy it to your
-          integration’s secret store. Revocation and membership changes take effect on the next
-          call.
+          {tr(
+            'The secret is returned once and kept only in this page’s memory. Copy it to your integration’s secret store. Revocation and membership changes take effect on the next call.',
+          )}
         </p>
       </section>
       <form className="panel channel-form" onSubmit={execute}>
-        <h2>Try a read-only tool</h2>
+        <h2>{tr('Try a read-only tool')}</h2>
         <label>
-          Bearer credential
+          {tr('Bearer credential')}
           <input
             type="password"
             autoComplete="off"
@@ -869,33 +943,36 @@ function Tools() {
                 )
             }
           >
-            Copy credential
+            {tr('Copy credential')}
           </button>
         )}
         <label>
-          Tool
+          {tr('Tool')}
           <select name="operation">
-            <option>query</option>
-            <option>match</option>
-            <option>route</option>
+            <option value="query">{tr('query')}</option>
+            <option value="match">{tr('match')}</option>
+            <option value="route">{tr('route')}</option>
           </select>
         </label>
         <label>
-          Title search
+          {tr('Title search')}
           <input name="query" />
         </label>
         <label>
-          Asset ID (required for route)
+          {tr('Asset ID (required for route)')}
           <input name="asset_id" />
         </label>
         <button className="button" disabled={busy}>
-          {busy ? 'Checking…' : 'Run tool'}
+          {busy ? tr('Checking…') : tr('Run tool')}
         </button>
       </form>
       {result && (
         <section className="panel">
           <p>
-            Snapshot {result.as_of} · Fresh until {result.valid_until}
+            {tr('Snapshot ')}
+            {result.as_of}
+            {tr(' · Fresh until ')}
+            {result.valid_until}
           </p>
           <p>{result.notice}</p>
           {result.items.map((a: Row) => (
@@ -903,30 +980,31 @@ function Tools() {
               {a.title} · {money(a.price_cents)} · {a.channel} {a.match_reason}
               {a.path && (
                 <Link className="text-link" href={a.path}>
-                  Review purchase route →
+                  {tr('Review purchase route →')}
                 </Link>
               )}
             </p>
           ))}
-          {!result.items.length && <p>No eligible stock matches these criteria.</p>}
+          {!result.items.length && <p>{tr('No eligible stock matches these criteria.')}</p>}
           <p>
-            Usage today: {result.usage.used_today}/{result.usage.daily_limit}
+            {tr('Usage today: ')}
+            {result.usage.used_today}/{result.usage.daily_limit}
           </p>
         </section>
       )}
-      <h2>Credentials and usage</h2>
+      <h2>{tr('Credentials and usage')}</h2>
       {keys?.map((k) => (
         <section className="panel" key={k.id}>
           <h3>{k.name}</h3>
           <p>
-            {k.scopes.join(', ')} · {k.used_today}/{k.daily_limit} today · Expires{' '}
-            {new Date(k.expires_at).toLocaleDateString()}
+            {k.scopes.join(', ')} · {k.used_today}/{k.daily_limit}
+            {tr(' today · Expires')} {dateTime(k.expires_at)}
           </p>
           {k.revoked_at ? (
             <Status status="revoked" />
           ) : (
             <ActionForm
-              title="Revoke access"
+              title={tr('Revoke access')}
               path={`/tools/keys/${k.id}/revoke`}
               submit="Revoke credential"
             />

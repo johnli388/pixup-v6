@@ -1,22 +1,26 @@
 'use client';
+import { useI18n } from './i18n';
 import { useState } from 'react';
 import { useData, useAction, type Row } from './providers';
-import { ErrorNotice, Status, money, date } from './ui';
+import { ErrorNotice, Status } from './ui';
 
 export function PaymentControlPanel() {
+  const { t: tr, money, date } = useI18n();
+
   const { data, error, refetch } = useData('/ops/payment-controls'),
     action = useAction();
   const [order, setOrder] = useState('');
   return (
     <section className="panel spaced">
-      <h2>Provider reconciliation and refund controls</h2>
+      <h2>{tr('Provider reconciliation and refund controls')}</h2>
       <p>
-        Stripe test mode only. Partial refunds are explicit cash price adjustments that retain title
-        and original credits. A second finance reviewer must approve the exact allocation.
+        {tr(
+          'Stripe test mode only. Partial refunds are explicit cash price adjustments that retain title and original credits. A second finance reviewer must approve the exact allocation.',
+        )}
       </p>
       <ErrorNotice error={error} />
       <button className="button secondary small" onClick={() => void refetch()}>
-        Refresh payment controls
+        {tr('Refresh payment controls')}
       </button>
       <form
         className="spaced"
@@ -33,18 +37,18 @@ export function PaymentControlPanel() {
         }}
       >
         <label className="field">
-          Payment order
+          {tr('Payment order')}
           <select value={order} onChange={(e) => setOrder(e.target.value)} required>
-            <option value="">Choose a Stripe order</option>
+            <option value="">{tr('Choose a Stripe order')}</option>
             {data?.scopes.map((p: Row) => (
               <option key={p.order_id} value={p.order_id}>
-                {p.order_id} · {p.account_id || 'Legacy scope review required'}
+                {p.order_id} · {p.account_id || tr('Legacy scope review required')}
               </option>
             ))}
           </select>
         </label>
         <button className="button secondary" disabled={!order || action.busy}>
-          Reconcile provider payment
+          {tr('Reconcile provider payment')}
         </button>
         <ErrorNotice error={action.error} />
       </form>
@@ -53,18 +57,28 @@ export function PaymentControlPanel() {
         .filter((p: Row) => !p.account_id)
         .map((p: Row) => (
           <details className="panel spaced" key={p.order_id}>
-            <summary>Bind legacy payment scope · {p.order_id}</summary>
+            <summary>
+              {tr('Bind legacy payment scope · ')}
+              {p.order_id}
+            </summary>
             <LegacyScope payment={p} />
           </details>
         ))}
       {data?.adjustments.map((r: Row) => (
         <details className="panel spaced" key={r.id}>
           <summary>
-            Partial refund {money(r.amount_cents)} · <Status status={r.state} />
+            {tr('Partial refund ')}
+            {money(r.amount_cents)} · <Status status={r.state} />
           </summary>
           <p>
-            Order {r.order_id} · Seller {money(r.seller_cents)} · Fee {money(r.fee_cents)} ·
-            Shipping {money(r.shipping_cents)}
+            {tr('Order ')}
+            {r.order_id}
+            {tr(' · Seller ')}
+            {money(r.seller_cents)}
+            {tr(' · Fee ')}
+            {money(r.fee_cents)}
+            {tr(' · Shipping ')}
+            {money(r.shipping_cents)}
           </p>
           <p>{r.error_code || ''}</p>
           {!['succeeded', 'failed', 'canceled'].includes(r.state) && (
@@ -82,20 +96,24 @@ export function PaymentControlPanel() {
         .map((r: Row) => (
           <details className="panel spaced" key={r.id}>
             <summary>
-              Failed refund attempt {r.attempt_number} · {r.order_id}
+              {tr('Failed refund attempt ')}
+              {r.attempt_number} · {r.order_id}
             </summary>
             <p>
-              Provider outcome: {r.status}. Earlier attempts remain recorded; only the latest
-              terminal attempt can be replaced.
+              {tr('Provider outcome: ')}
+              {r.status}
+              {tr(
+                '. Earlier attempts remain recorded; only the latest terminal attempt can be replaced.',
+              )}
             </p>
             <ApprovalRequest
               path={`/ops/payments/${r.order_id}/retry-refund`}
-              label="Request refund retry review"
+              label={tr('Request refund retry review')}
             />
           </details>
         ))}
       <details className="panel spaced">
-        <summary>Retrieve a provider dispute</summary>
+        <summary>{tr('Retrieve a provider dispute')}</summary>
         <DisputeForm done={() => void refetch()} />
       </details>
       {data?.disputes.map((d: Row) => (
@@ -104,12 +122,14 @@ export function PaymentControlPanel() {
             {d.id} · {d.status}
           </strong>
           <p>
-            Order {d.order_id} · {money(d.amount_cents)} · Respond by{' '}
-            {d.due_at ? date(d.due_at) : 'provider review'}
+            {tr('Order ')}
+            {d.order_id} · {money(d.amount_cents)}
+            {tr(' · Respond by')} {d.due_at ? date(d.due_at) : tr('provider review')}
           </p>
           <p>
-            Submit evidence in the Stripe test dashboard. Local refresh cannot decide the dispute or
-            restore title.
+            {tr(
+              'Submit evidence in the Stripe test dashboard. Local refresh cannot decide the dispute or restore title.',
+            )}
           </p>
           <RecoveryForm path={`/ops/disputes/${d.id}/refresh`} done={() => void refetch()} />
         </article>
@@ -117,26 +137,36 @@ export function PaymentControlPanel() {
       {data?.reconciliations.map((r: Row) => (
         <details className="panel spaced" key={r.id}>
           <summary>
-            Reconciliation · {r.order_id} · {r.state}
+            {tr('Reconciliation · ')}
+            {r.order_id} · {r.state}
           </summary>
           <p>
-            Expected cash {money(r.expected.cash_cents)} / refunds{' '}
-            {money(r.expected.refunded_cents)}. Provider cash {money(r.observed.cash_cents)} /
-            refunds {money(r.observed.refunded_cents)}.
+            {tr('Expected cash ')}
+            {money(r.expected.cash_cents)}
+            {tr(' / refunds')} {money(r.expected.refunded_cents)}
+            {tr('. Provider cash ')}
+            {money(r.observed.cash_cents)}
+            {tr(' / refunds ')}
+            {money(r.observed.refunded_cents)}.
           </p>
           <p>
-            Provider fee: {r.observed.balance ? money(r.observed.balance.fee) : 'Unavailable'}.
-            Provider balance status: {r.observed.balance?.status || 'Unavailable'}. This is not bank
-            reconciliation.
+            {tr('Provider fee: ')}
+            {r.observed.balance ? money(r.observed.balance.fee) : tr('Unavailable')}
+            {tr('. Provider balance status: ')}
+            {r.observed.balance?.status || tr('Unavailable')}
+            {tr('. This is not bank reconciliation.')}
           </p>
         </details>
       ))}
       {!!data?.events.length && (
         <details className="panel spaced">
-          <summary>Unprocessed provider events ({data.events.length})</summary>
+          <summary>
+            {tr('Unprocessed provider events (')}
+            {data.events.length})
+          </summary>
           {data.events.map((e: Row) => (
             <p key={e.event_id}>
-              {e.event_type} · {e.object_id} · {e.error_code || 'Awaiting retrieval'}
+              {e.event_type} · {e.object_id} · {e.error_code || tr('Awaiting retrieval')}
             </p>
           ))}
         </details>
@@ -146,13 +176,16 @@ export function PaymentControlPanel() {
   );
 }
 function PartialRequest({ order }: { order: string }) {
+  const { t: tr } = useI18n();
+
   const a = useAction();
   return (
     <details className="panel spaced">
-      <summary>Request a partial cash refund</summary>
+      <summary>{tr('Request a partial cash refund')}</summary>
       <p>
-        Enter the exact amounts charged back to seller proceeds, platform fees and shipping. Their
-        sum must remain below the cash still paid. No allocation policy is assumed.
+        {tr(
+          'Enter the exact amounts charged back to seller proceeds, platform fees and shipping. Their sum must remain below the cash still paid. No allocation policy is assumed.',
+        )}
       </p>
       <form
         onSubmit={async (e) => {
@@ -172,7 +205,8 @@ function PartialRequest({ order }: { order: string }) {
       >
         {['Seller', 'Fee', 'Shipping'].map((label) => (
           <label className="field" key={label}>
-            {label} refund allocation (USD)
+            {label}
+            {tr(' refund allocation (USD)')}
             <input
               type="number"
               name={label.toLowerCase()}
@@ -185,11 +219,11 @@ function PartialRequest({ order }: { order: string }) {
           </label>
         ))}
         <label className="field">
-          Partial refund reason
+          {tr('Partial refund reason')}
           <textarea name="reason" required minLength={10} maxLength={2000} />
         </label>
         <button className="button" disabled={a.busy}>
-          Request partial refund review
+          {tr('Request partial refund review')}
         </button>
         <ErrorNotice error={a.error} />
       </form>
@@ -197,6 +231,8 @@ function PartialRequest({ order }: { order: string }) {
   );
 }
 function ApprovalRequest({ path, label }: { path: string; label: string }) {
+  const { t: tr } = useI18n();
+
   const a = useAction();
   return (
     <form
@@ -210,7 +246,7 @@ function ApprovalRequest({ path, label }: { path: string; label: string }) {
       }}
     >
       <label className="field">
-        Finance review reason
+        {tr('Finance review reason')}
         <textarea name="reason" required minLength={10} maxLength={2000} />
       </label>
       <button className="button secondary" disabled={a.busy}>
@@ -231,6 +267,8 @@ function RecoveryForm({
   referenceLabel?: string;
   done: () => void;
 }) {
+  const { t: tr } = useI18n();
+
   const a = useAction();
   return (
     <form
@@ -258,17 +296,19 @@ function RecoveryForm({
         </label>
       )}
       <label className="field">
-        Reconciliation note
+        {tr('Reconciliation note')}
         <textarea name="note" required minLength={10} maxLength={2000} />
       </label>
       <button className="button secondary" disabled={a.busy}>
-        Retrieve original provider state
+        {tr('Retrieve original provider state')}
       </button>
       <ErrorNotice error={a.error} />
     </form>
   );
 }
 function LegacyScope({ payment: p }: { payment: Row }) {
+  const { t: tr } = useI18n();
+
   const a = useAction();
   return (
     <form
@@ -283,21 +323,23 @@ function LegacyScope({ payment: p }: { payment: Row }) {
       }}
     >
       <label className="field">
-        Original scoped Checkout Session ID
+        {tr('Original scoped Checkout Session ID')}
         <input name="session_id" defaultValue={p.provider_session_id || ''} required />
       </label>
       <label className="field">
-        Scope verification note
+        {tr('Scope verification note')}
         <textarea name="note" required minLength={10} maxLength={2000} />
       </label>
       <button className="button secondary" disabled={a.busy}>
-        Verify and bind original account
+        {tr('Verify and bind original account')}
       </button>
       <ErrorNotice error={a.error} />
     </form>
   );
 }
 function DisputeForm({ done }: { done: () => void }) {
+  const { t: tr } = useI18n();
+
   const a = useAction();
   return (
     <form
@@ -315,40 +357,45 @@ function DisputeForm({ done }: { done: () => void }) {
       }}
     >
       <label className="field">
-        Stripe dispute ID
+        {tr('Stripe dispute ID')}
         <input name="id" required pattern="du_.+" />
       </label>
       <label className="field">
-        Dispute retrieval reason
+        {tr('Dispute retrieval reason')}
         <textarea name="note" required minLength={10} maxLength={2000} />
       </label>
       <button className="button secondary" disabled={a.busy}>
-        Retrieve dispute
+        {tr('Retrieve dispute')}
       </button>
       <ErrorNotice error={a.error} />
     </form>
   );
 }
 function ConnectOperations() {
+  const { t: tr, money } = useI18n();
+
   const { data, error, refetch } = useData('/ops/connect');
   return (
     <section className="spaced">
-      <h3>Connected test balances</h3>
+      <h3>{tr('Connected test balances')}</h3>
       <p>
         {data?.enabled
-          ? 'Test transfers require fulfilled stock, available provider funds, ready recipients and independent approval.'
-          : 'Test transfers are disabled.'}{' '}
-        A transfer to a connected Stripe balance is not confirmation of a bank payout.
+          ? tr(
+              'Test transfers require fulfilled stock, available provider funds, ready recipients and independent approval.',
+            )
+          : tr('Test transfers are disabled.')}{' '}
+        {tr('A transfer to a connected Stripe balance is not confirmation of a bank payout.')}
       </p>
       <ErrorNotice error={error} />
       {data?.recipients.map((r: Row) => (
         <details key={r.id} className="panel spaced">
           <summary>
-            Recipient {r.user_id} · {r.state}
+            {tr('Recipient ')}
+            {r.user_id} · {r.state}
           </summary>
           <p>
-            {r.country} · {r.requirements_count} provider requirements ·{' '}
-            {r.error_code || 'No current error'}
+            {r.country} · {r.requirements_count}
+            {tr(' provider requirements ·')} {r.error_code || tr('No current error')}
           </p>
           {r.error_code && (
             <RecoveryForm
@@ -364,22 +411,28 @@ function ConnectOperations() {
         data.settlements.map((s: Row) => (
           <details className="panel spaced" key={s.id}>
             <summary>
-              Held test settlement {money(s.amount_cents)} · {s.seller_id}
+              {tr('Held test settlement ')}
+              {money(s.amount_cents)} · {s.seller_id}
             </summary>
-            <p>Order {s.order_id}</p>
+            <p>
+              {tr('Order ')}
+              {s.order_id}
+            </p>
             <ApprovalRequest
               path={`/ops/settlements/${s.id}/test-transfer`}
-              label="Request test transfer review"
+              label={tr('Request test transfer review')}
             />
           </details>
         ))}
       {data?.transfers.map((t: Row) => (
         <details className="panel spaced" key={t.id}>
           <summary>
-            Test transfer {money(t.amount_cents)} · {t.state}
+            {tr('Test transfer ')}
+            {money(t.amount_cents)} · {t.state}
           </summary>
           <p>
-            Order {t.order_id} · {t.provider_transfer_id || 'Provider outcome pending'} ·{' '}
+            {tr('Order ')}
+            {t.order_id} · {t.provider_transfer_id || tr('Provider outcome pending')} ·{' '}
             {t.error_code || ''}
           </p>
           {
@@ -390,32 +443,36 @@ function ConnectOperations() {
               done={() => void refetch()}
             />
           }
-          <p>Bank payout status is not tracked.</p>
+          <p>{tr('Bank payout status is not tracked.')}</p>
         </details>
       ))}
     </section>
   );
 }
 export function ConnectSettings() {
+  const { t: tr } = useI18n();
+
   const { data, error, refetch } = useData('/connect'),
     a = useAction();
   const [agree, setAgree] = useState(false);
   return (
     <section className="panel spaced">
-      <h2>Seller test onboarding</h2>
+      <h2>{tr('Seller test onboarding')}</h2>
       <ErrorNotice error={error || a.error} />
       {!data?.enabled ? (
-        <p>Connected-account onboarding is not enabled for this pilot.</p>
+        <p>{tr('Connected-account onboarding is not enabled for this pilot.')}</p>
       ) : (
         <>
           <p>
-            Stripe hosts identity and payout-detail collection. This is a test account; returning
-            here does not confirm verification or bank payment.
+            {tr(
+              'Stripe hosts identity and payout-detail collection. This is a test account; returning here does not confirm verification or bank payment.',
+            )}
           </p>
           {data.recipient && (
             <p>
-              Provider readiness: {data.recipient.state} · {data.recipient.requirements_count}{' '}
-              outstanding requirements
+              {tr('Provider readiness: ')}
+              {data.recipient.state} · {data.recipient.requirements_count}{' '}
+              {tr('outstanding requirements')}
             </p>
           )}
           <form
@@ -429,19 +486,21 @@ export function ConnectSettings() {
             }}
           >
             <label className="field">
-              Test recipient country
+              {tr('Test recipient country')}
               <select name="country" defaultValue={data.recipient?.country || data.countries[0]}>
                 {data.countries.map((c: string) => (
-                  <option key={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {tr(c)}
+                  </option>
                 ))}
               </select>
             </label>
             <label className="checkbox-label">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-              I consent to hosted test seller onboarding for this account.
+              {tr('I consent to hosted test seller onboarding for this account.')}
             </label>
             <button className="button" disabled={!agree || a.busy}>
-              Continue to Stripe test onboarding
+              {tr('Continue to Stripe test onboarding')}
             </button>
           </form>
           {data.recipient && (
@@ -453,7 +512,7 @@ export function ConnectSettings() {
                   void refetch();
               }}
             >
-              Refresh seller readiness
+              {tr('Refresh seller readiness')}
             </button>
           )}
         </>
@@ -462,22 +521,26 @@ export function ConnectSettings() {
   );
 }
 export function OrderAdjustments({ orderId }: { orderId: string }) {
+  const { t: tr, money } = useI18n();
+
   const { data, error } = useData(`/orders/${orderId}/payment-adjustments`);
   if (error) return <ErrorNotice error={error} />;
   if (!data?.adjustments.length && !data?.disputes.length) return null;
   return (
     <section className="panel spaced">
-      <h3>Payment adjustments</h3>
+      <h3>{tr('Payment adjustments')}</h3>
       {data.adjustments.map((a: Row) => (
         <p key={a.id}>
-          Partial cash refund {money(a.amount_cents)} · {a.state}. Original credits and title are
-          retained.
+          {tr('Partial cash refund ')}
+          {money(a.amount_cents)} · {a.state}
+          {tr('. Original credits and title are retained.')}
         </p>
       ))}
       {data.disputes.map((d: Row, i: number) => (
         <p key={i}>
-          Provider dispute · {d.status} · {money(d.amount_cents)}. Support will coordinate next
-          steps.
+          {tr('Provider dispute · ')}
+          {d.status} · {money(d.amount_cents)}
+          {tr('. Support will coordinate next steps.')}
         </p>
       ))}
     </section>

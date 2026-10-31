@@ -14,6 +14,8 @@ This review covers all 40 pages of [PixUP-BP-J.pdf](../../PixUP-BP-J.pdf) and al
 
 The October 30 review adds explicit source-registration versus VIA states, own-issuance concentration controls, five-factor partner agreements, early manual channel experiments, financial metric definitions and category/entity boundaries. The architecture, backend and frontend plans now reflect migrations 001–016, Ask PixUP and the current-pilot gap review. [Implementation status](../implementation-status.md) records what runs and its validation limits. Requirement IDs R01–R16 remain shared by the core plans; B0–B13 and F0–F7 identify their delivery workstreams. Community Hub uses CH0–CH5; its text pilot is implemented through migration 015, with rollout, operational acceptance and later media/public increments kept separate.
 
+The six-language interface increment adds English, Spanish, French, Simplified Chinese, Japanese and Korean with persistent locale selection and localized Ask PixUP responses. See [internationalization coverage and implementation](../internationalization.md); it requires no new migration.
+
 ## Recommended product direction
 
 Build a multi-sided collectibles SaaS platform with a shared asset registry and transaction core. Buyers collect and trade; sellers list inventory and manage fulfillment; IP creators publish licensed collections and view attribution and earnings. Certification, custody, provenance, settlement, and recirculation support every channel.

@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import { CommercialTerms } from './commercial';
 import { IdentitySignIn } from './identity-access';
 import { BillingSettings } from './saas-inventory';
@@ -39,11 +40,11 @@ import {
   ErrorNotice,
   AccountGate,
   Modal,
-  money,
-  date,
 } from './ui';
 
 export function Login() {
+  const { t: tr } = useI18n();
+
   const router = useRouter(),
     client = useQueryClient();
   const { request, toast, loading } = useSession();
@@ -83,33 +84,33 @@ export function Login() {
   return (
     <div className="login-layout">
       <div className="login-story">
-        <span className="eyebrow">A HOME FOR WHAT YOU LOVE.</span>
+        <span className="eyebrow">{tr('A HOME FOR WHAT YOU LOVE.')}</span>
         <h1>
-          Some things
+          {tr('Some things')}
           <br />
-          are worth
+          {tr('are worth')}
           <br />
-          <em>holding on to.</em>
+          <em>{tr('holding on to.')}</em>
         </h1>
         <div className="login-cards">
           <CardArt variant="idol" />
           <CardArt variant="court" />
         </div>
-        <p>Find your people. Find your next favorite.</p>
+        <p>{tr('Find your people. Find your next favorite.')}</p>
       </div>
       <div className="login-form panel">
         <span className="mini-spark">✳</span>
-        <h2>{register ? 'Start your collection.' : 'Good to have you back.'}</h2>
+        <h2>{register ? tr('Start your collection.') : tr('Good to have you back.')}</h2>
         <p>
           {register
-            ? 'Create a personal account to collect and sell.'
-            : 'Sign in to your corner of collectible culture.'}
+            ? tr('Create a personal account to collect and sell.')
+            : tr('Sign in to your corner of collectible culture.')}
         </p>
         <IdentitySignIn />
         <form onSubmit={submit}>
           {register && (
             <label className="field">
-              Your name
+              {tr('Your name')}
               <input
                 required
                 minLength={2}
@@ -122,7 +123,7 @@ export function Login() {
             </label>
           )}
           <label className="field">
-            Email address
+            {tr('Email address')}
             <input
               required
               type="email"
@@ -133,7 +134,7 @@ export function Login() {
             />
           </label>
           <label className="field">
-            Password
+            {tr('Password')}
             <input
               required
               type="password"
@@ -147,7 +148,7 @@ export function Login() {
           </label>
           <ErrorNotice error={error} />
           <button className="button full" disabled={loading || busy}>
-            {busy ? 'One moment…' : register ? 'Create account' : 'Sign in'}
+            {busy ? tr('One moment…') : register ? tr('Create account') : tr('Sign in')}
             <ArrowRight size={17} />
           </button>
         </form>
@@ -163,11 +164,11 @@ export function Login() {
             }
           }}
         >
-          {register ? 'Already collecting? Sign in' : 'New here? Create an account'}
+          {register ? tr('Already collecting? Sign in') : tr('New here? Create an account')}
         </button>
         {!register && (
           <div className="demo-accounts">
-            <span className="eyebrow">EXPLORE A DEMO WORKSPACE</span>
+            <span className="eyebrow">{tr('EXPLORE A DEMO WORKSPACE')}</span>
             <div>
               {['collector', 'creator', 'seller', 'ops'].map((role) => (
                 <button
@@ -179,11 +180,13 @@ export function Login() {
                   }}
                   className={email === `${role}@pixup.demo` ? 'selected' : ''}
                 >
-                  {role === 'ops' ? 'Operations' : role[0].toUpperCase() + role.slice(1)}
+                  {role === 'ops' ? tr('Operations') : role[0].toUpperCase() + role.slice(1)}
                 </button>
               ))}
             </div>
-            <small>These are shared demonstration accounts, not real customer identities.</small>
+            <small>
+              {tr('These are shared demonstration accounts, not real customer identities.')}
+            </small>
           </div>
         )}
       </div>
@@ -198,6 +201,8 @@ export function MyCollection({ saved = false }: { saved?: boolean }) {
   );
 }
 function Portfolio({ saved }: { saved: boolean }) {
+  const { t: tr } = useI18n();
+
   const { data, error, isPending } = useData('/portfolio');
   const [filter, setFilter] = useState('All');
   if (isPending) return <Loading />;
@@ -207,47 +212,47 @@ function Portfolio({ saved }: { saved: boolean }) {
   return (
     <>
       <PageTitle
-        eyebrow="YOUR OWN LITTLE UNIVERSE"
-        title={saved ? 'On your radar.' : 'Your collection, your story.'}
+        eyebrow={tr('YOUR OWN LITTLE UNIVERSE')}
+        title={saved ? tr('On your radar.') : tr('Your collection, your story.')}
         description={
           saved
-            ? 'A few favorites you might come back for.'
-            : 'Every find, every memory, every next chapter. All in one place.'
+            ? tr('A few favorites you might come back for.')
+            : tr('Every find, every memory, every next chapter. All in one place.')
         }
       >
         <Link href="/workspace/seller" className="button secondary">
-          Manage inventory
+          {tr('Manage inventory')}
           <ArrowUpRight size={16} />
         </Link>
       </PageTitle>
       {!saved && (
         <div className="stats-grid">
           <Stat
-            label="In your collection"
+            label={tr('In your collection')}
             value={data.items.length}
-            note="Individually registered collectibles"
+            note={tr('Individually registered collectibles')}
             icon={<Package size={18} />}
           />
           <Stat
-            label="Held in the vault"
+            label={tr('Held in the vault')}
             value={data.items.filter((a: Row) => a.custody === 'vault').length}
-            note="Custody tracked with each item"
+            note={tr('Custody tracked with each item')}
             icon={<ShieldCheck size={18} />}
           />
           <Stat
-            label="Intakes in progress"
+            label={tr('Intakes in progress')}
             value={
               data.intakes.filter((i: Row) => ['received', 'awaiting_receipt'].includes(i.status))
                 .length
             }
-            note="Follow progress in seller studio"
+            note={tr('Follow progress in seller studio')}
           />
         </div>
       )}
       <div className="tabs spaced">
         {['All', 'Sports', 'K-pop', 'Art', 'Gaming'].map((c) => (
           <button key={c} onClick={() => setFilter(c)} className={filter === c ? 'selected' : ''}>
-            {c}
+            {tr(c)}
           </button>
         ))}
       </div>
@@ -259,11 +264,13 @@ function Portfolio({ saved }: { saved: boolean }) {
         </div>
       ) : (
         <Empty
-          title={saved ? 'Your next favorites go here.' : 'A little room for something great.'}
-          description="Explore the marketplace and find a collectible that feels like you."
+          title={
+            saved ? tr('Your next favorites go here.') : tr('A little room for something great.')
+          }
+          description={tr('Explore the marketplace and find a collectible that feels like you.')}
         >
           <Link href="/marketplace" className="button">
-            Find your next favorite
+            {tr('Find your next favorite')}
             <ArrowRight size={17} />
           </Link>
         </Empty>
@@ -275,6 +282,8 @@ export function Orders({ id }: { id?: string }) {
   return <AccountGate>{id ? <OrderDetail id={id} /> : <OrderList />}</AccountGate>;
 }
 function OrderList() {
+  const { t: tr, date, money } = useI18n();
+
   const { user } = useSession();
   const { data, error, isPending } = useData('/orders');
   if (isPending) return <Loading />;
@@ -282,23 +291,23 @@ function OrderList() {
   return (
     <>
       <PageTitle
-        eyebrow="EVERY TRANSACTION, TOGETHER"
-        title="Your orders"
-        description="From that first find to safely in your collection."
+        eyebrow={tr('EVERY TRANSACTION, TOGETHER')}
+        title={tr('Your orders')}
+        description={tr('From that first find to safely in your collection.')}
       />
       {data.length ? (
         <div className="panel table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Collectible</th>
-                <th>Order</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Total</th>
-                <th>Status</th>
+                <th>{tr('Collectible')}</th>
+                <th>{tr('Order')}</th>
+                <th>{tr('Date')}</th>
+                <th>{tr('Type')}</th>
+                <th>{tr('Total')}</th>
+                <th>{tr('Status')}</th>
                 <th>
-                  <span className="sr-only">Open</span>
+                  <span className="sr-only">{tr('Open')}</span>
                 </th>
               </tr>
             </thead>
@@ -315,7 +324,7 @@ function OrderList() {
                     <code>#{o.id.slice(0, 8)}</code>
                   </td>
                   <td>{date(o.created_at)}</td>
-                  <td>{o.buyer_id === user?.id ? 'Purchase' : 'Sale'}</td>
+                  <td>{o.buyer_id === user?.id ? tr('Purchase') : tr('Sale')}</td>
                   <td>{money(o.total_cents)}</td>
                   <td>
                     <Status status={o.status} />
@@ -336,11 +345,11 @@ function OrderList() {
         </div>
       ) : (
         <Empty
-          title="Your first find is waiting."
-          description="When you buy or sell a collectible, its order will live here."
+          title={tr('Your first find is waiting.')}
+          description={tr('When you buy or sell a collectible, its order will live here.')}
         >
           <Link href="/marketplace" className="button">
-            Explore collectibles
+            {tr('Explore collectibles')}
             <ArrowRight size={17} />
           </Link>
         </Empty>
@@ -349,6 +358,8 @@ function OrderList() {
   );
 }
 function OrderDetail({ id }: { id: string }) {
+  const { t: tr, date, money } = useI18n();
+
   const { user } = useSession();
   const { data: o, error, isPending } = useData(`/orders/${id}`);
   const action = useAction();
@@ -361,10 +372,10 @@ function OrderDetail({ id }: { id: string }) {
         eyebrow={`ORDER #${id.slice(0, 8).toUpperCase()}`}
         title={
           o.status === 'fulfilled'
-            ? 'A new chapter, confirmed.'
+            ? tr('A new chapter, confirmed.')
             : o.status === 'pending_payment'
-              ? 'One more step to make it yours.'
-              : 'Your order, at a glance.'
+              ? tr('One more step to make it yours.')
+              : tr('Your order, at a glance.')
         }
         description={`Created ${date(o.created_at)} · Demonstration transaction`}
       />
@@ -380,44 +391,50 @@ function OrderDetail({ id }: { id: string }) {
                 {o.channel !== 'web'
                   ? `${o.channel.toUpperCase()} physical fulfillment`
                   : o.fulfillment === 'vault'
-                    ? 'Vault custody selected'
-                    : 'Demo delivery selected'}
+                    ? tr('Vault custody selected')
+                    : tr('Demo delivery selected')}
               </p>
               <Link href={`/items/${o.asset_id}`} className="text-link">
-                View collectible <ArrowUpRight size={15} />
+                {tr('View collectible ')}
+                <ArrowUpRight size={15} />
               </Link>
             </div>
           </div>
           <dl className="spec-list">
             <div>
               <dt>
-                {o.payment_provider === 'stripe_test' ? 'Stripe test payment' : 'Demo payment'}
+                {o.payment_provider === 'stripe_test'
+                  ? tr('Stripe test payment')
+                  : tr('Demo payment')}
               </dt>
               <dd>{money(o.total_cents)}</dd>
             </div>
             <div>
-              <dt>Credits redeemed</dt>
-              <dd>{o.credit_units} credits</dd>
+              <dt>{tr('Credits redeemed')}</dt>
+              <dd>
+                {o.credit_units}
+                {tr(' credits')}
+              </dd>
             </div>
             <div>
-              <dt>Fulfillment</dt>
+              <dt>{tr('Fulfillment')}</dt>
               <dd>
                 {o.channel !== 'web'
                   ? o.channel.toUpperCase()
                   : o.fulfillment === 'vault'
-                    ? 'PixUP vault'
-                    : 'Demo shipment'}
+                    ? tr('PixUP vault')
+                    : tr('Demo shipment')}
               </dd>
             </div>
             {o.tracking && (
               <div>
-                <dt>Tracking reference</dt>
+                <dt>{tr('Tracking reference')}</dt>
                 <dd>{o.tracking}</dd>
               </div>
             )}
             {o.shipping_address && (
               <div>
-                <dt>Demo address</dt>
+                <dt>{tr('Demo address')}</dt>
                 <dd>{o.shipping_address}</dd>
               </div>
             )}
@@ -445,7 +462,7 @@ function OrderDetail({ id }: { id: string }) {
                     )
                   }
                 >
-                  Complete demo payment
+                  {tr('Complete demo payment')}
                 </button>
                 <button
                   className="button secondary"
@@ -458,7 +475,7 @@ function OrderDetail({ id }: { id: string }) {
                     )
                   }
                 >
-                  Cancel order
+                  {tr('Cancel order')}
                 </button>
               </div>
             )}
@@ -471,50 +488,51 @@ function OrderDetail({ id }: { id: string }) {
                 o.channel_fulfillment.state,
               )) && (
               <button className="button secondary" onClick={() => setRefund(true)}>
-                Request vault refund
+                {tr('Request vault refund')}
               </button>
             )}
         </div>
         <aside className="panel">
-          <h3>A record at every step.</h3>
+          <h3>{tr('A record at every step.')}</h3>
           <div className="timeline">
             <div>
               <span className="timeline-dot" />
-              <strong>Order created</strong>
-              <p>Inventory reserved for this order.</p>
+              <strong>{tr('Order created')}</strong>
+              <p>{tr('Inventory reserved for this order.')}</p>
             </div>
             <div>
               <span className={`timeline-dot ${o.paid_at ? '' : 'inactive'}`} />
-              <strong>Payment confirmed</strong>
+              <strong>{tr('Payment confirmed')}</strong>
               <p>
                 {o.paid_at
                   ? date(o.paid_at)
                   : o.payment_provider === 'stripe_test'
-                    ? 'Waiting for Stripe confirmation.'
-                    : 'Waiting for demo payment.'}
+                    ? tr('Waiting for Stripe confirmation.')
+                    : tr('Waiting for demo payment.')}
               </p>
             </div>
             <div>
               <span className={`timeline-dot ${o.status === 'fulfilled' ? '' : 'inactive'}`} />
-              <strong>Fulfillment</strong>
+              <strong>{tr('Fulfillment')}</strong>
               <p>
                 {o.status === 'fulfilled'
-                  ? 'Vault transfer or demo shipment completed.'
-                  : 'Follow the status here.'}
+                  ? tr('Vault transfer or demo shipment completed.')
+                  : tr('Follow the status here.')}
               </p>
             </div>
           </div>
           <Link href={`/account/support?order=${id}`} className="button secondary full">
             <LifeBuoy size={16} />
-            Get help with this order
+            {tr('Get help with this order')}
           </Link>
         </aside>
       </div>
       {refund && (
-        <Modal title="Request a demo refund" onClose={() => setRefund(false)}>
+        <Modal title={tr('Request a demo refund')} onClose={() => setRefund(false)}>
           <p>
-            The original collectible must still be yours, held in the vault, and not listed or in an
-            intake. Released settlements require a support case.
+            {tr(
+              'The original collectible must still be yours, held in the vault, and not listed or in an intake. Released settlements require a support case.',
+            )}
           </p>
           <ErrorNotice error={action.error} />
           <button
@@ -531,7 +549,7 @@ function OrderDetail({ id }: { id: string }) {
                 setRefund(false);
             }}
           >
-            Confirm refund
+            {tr('Confirm refund')}
           </button>
         </Modal>
       )}
@@ -546,57 +564,64 @@ export function Credits() {
   );
 }
 function CreditView() {
+  const { t: tr, date, number } = useI18n();
+
   const { data, error, isPending } = useData('/credits');
   if (isPending) return <Loading />;
   if (error) return <ErrorNotice error={error} />;
   return (
     <>
       <PageTitle
-        eyebrow="KEEP THE GOOD FINDS CIRCULATING"
-        title="A little credit. More possibility."
-        description="Your ecosystem credits, with a clear record of where they came from."
+        eyebrow={tr('KEEP THE GOOD FINDS CIRCULATING')}
+        title={tr('A little credit. More possibility.')}
+        description={tr('Your ecosystem credits, with a clear record of where they came from.')}
       />
       <div className="credit-layout">
         <section className="credit-card">
-          <span className="eyebrow">AVAILABLE PIXUP CREDITS</span>
+          <span className="eyebrow">{tr('AVAILABLE PIXUP CREDITS')}</span>
           <strong>
-            {data.available.toLocaleString()}
-            <span> credits</span>
+            {number(Number(data.available))}
+            <span>{tr(' credits')}</span>
           </strong>
-          <p>{data.held} currently held for pending orders</p>
+          <p>
+            {data.held}
+            {tr(' currently held for pending orders')}
+          </p>
           <Link href="/marketplace" className="button lime">
-            Find something worth keeping
+            {tr('Find something worth keeping')}
             <ArrowUpRight size={17} />
           </Link>
           <span className="credit-symbol">✳</span>
         </section>
         <div className="panel credit-rules">
-          <h3>Good to know.</h3>
+          <h3>{tr('Good to know.')}</h3>
           <p>
             <CheckCircle size={17} />
-            Spend on eligible PixUP-owned collectibles.
+            {tr('Spend on eligible PixUP-owned collectibles.')}
           </p>
           <p>
             <LockKeyhole size={17} />
-            Credits cannot be transferred or withdrawn.
+            {tr('Credits cannot be transferred or withdrawn.')}
           </p>
           <p>
             <ShieldCheck size={17} />
-            RePool grants follow receipt and inspection.
+            {tr('RePool grants follow receipt and inspection.')}
           </p>
-          <small>Demo only: 100 credits = $1. This is not a production credit policy.</small>
+          <small>
+            {tr('Demo only: 100 credits = $1. This is not a production credit policy.')}
+          </small>
         </div>
       </div>
-      <SectionTitle title="Your credit history" />
+      <SectionTitle title={tr('Your credit history')} />
       {data.history.length ? (
         <div className="panel table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Activity</th>
-                <th>Date</th>
-                <th>Credits</th>
-                <th>Unit</th>
+                <th>{tr('Activity')}</th>
+                <th>{tr('Date')}</th>
+                <th>{tr('Credits')}</th>
+                <th>{tr('Unit')}</th>
               </tr>
             </thead>
             <tbody>
@@ -610,7 +635,7 @@ function CreditView() {
                     {h.amount < 0 ? '+' : '−'}
                     {Math.abs(h.amount)}
                   </td>
-                  <td>Credits</td>
+                  <td>{tr('Credits')}</td>
                 </tr>
               ))}
             </tbody>
@@ -618,8 +643,8 @@ function CreditView() {
         </div>
       ) : (
         <Empty
-          title="A fresh start"
-          description="Accepted recirculation offers and credit activity will appear here."
+          title={tr('A fresh start')}
+          description={tr('Accepted recirculation offers and credit activity will appear here.')}
         />
       )}
     </>
@@ -633,13 +658,15 @@ export function Activity() {
   );
 }
 function ActivityInner() {
+  const { t: tr, date } = useI18n();
+
   const { data, error, isPending } = useData('/activity');
   if (isPending) return <Loading />;
   return (
     <>
       <PageTitle
-        title="The latest in your world."
-        description="Updates from your collection, orders, and vault."
+        title={tr('The latest in your world.')}
+        description={tr('Updates from your collection, orders, and vault.')}
       />
       <ErrorNotice error={error} />
       {data?.length ? (
@@ -659,8 +686,8 @@ function ActivityInner() {
         </div>
       ) : (
         <Empty
-          title="All caught up."
-          description="Important updates will appear here as you collect."
+          title={tr('All caught up.')}
+          description={tr('Important updates will appear here as you collect.')}
         />
       )}
     </>
@@ -674,6 +701,8 @@ export function Settings() {
   );
 }
 function SettingsInner() {
+  const { t: tr } = useI18n();
+
   const { user, request } = useSession();
   const client = useQueryClient(),
     router = useRouter();
@@ -681,8 +710,8 @@ function SettingsInner() {
   return (
     <>
       <PageTitle
-        title="Your account"
-        description="Your identity, your workspaces, your corner of PixUP."
+        title={tr('Your account')}
+        description={tr('Your identity, your workspaces, your corner of PixUP.')}
       />
       <div className="panel settings-panel">
         <div className="profile-large">
@@ -691,9 +720,9 @@ function SettingsInner() {
             <h2>{user?.name}</h2>
             <p>{user?.email}</p>
           </div>
-          <Badge tone="green">{user?.is_staff ? 'Operations' : 'Personal account'}</Badge>
+          <Badge tone="green">{user?.is_staff ? tr('Operations') : tr('Personal account')}</Badge>
         </div>
-        <h3>Your workspaces</h3>
+        <h3>{tr('Your workspaces')}</h3>
         {user?.organizations.map((o) => (
           <div className="workspace-row" key={o.id}>
             <div>
@@ -702,14 +731,15 @@ function SettingsInner() {
                 {o.kind} · {o.role}
               </p>
             </div>
-            <Badge>Pilot plan</Badge>
+            <Badge>{tr('Pilot plan')}</Badge>
           </div>
         ))}
         <div className="notice">
-          <strong>Local demonstration environment</strong>
+          <strong>{tr('Local demonstration environment')}</strong>
           <p>
-            Sessions use HTTP-only cookies. Account security provides authenticator enrollment,
-            session controls and configured email/managed sign-in. External providers require setup.
+            {tr(
+              'Sessions use HTTP-only cookies. Account security provides authenticator enrollment, session controls and configured email/managed sign-in. External providers require setup.',
+            )}
           </p>
         </div>
         <ErrorNotice error={error} />
@@ -728,11 +758,11 @@ function SettingsInner() {
           }}
         >
           <LogOut size={17} />
-          Sign out / switch demo account
+          {tr('Sign out / switch demo account')}
         </button>
       </div>
       <Link className="button secondary" href="/account/security">
-        Account security
+        {tr('Account security')}
       </Link>
       <PrivacySettings />
       <OrganizationSettings />
@@ -750,6 +780,8 @@ export function Support() {
   );
 }
 function SupportInner() {
+  const { t: tr, date } = useI18n();
+
   const { data, error } = useData('/support');
   const action = useAction();
   const [subject, setSubject] = useState(''),
@@ -758,9 +790,9 @@ function SupportInner() {
   return (
     <>
       <PageTitle
-        eyebrow="WE’RE HERE FOR YOUR NEXT CHAPTER"
-        title="A little help goes a long way."
-        description="Open a case for an order, authentication, custody, or your account."
+        eyebrow={tr('WE’RE HERE FOR YOUR NEXT CHAPTER')}
+        title={tr('A little help goes a long way.')}
+        description={tr('Open a case for an order, authentication, custody, or your account.')}
       />
       <div className="support-grid">
         <form
@@ -780,9 +812,9 @@ function SupportInner() {
             }
           }}
         >
-          <h2>Let’s work it out.</h2>
+          <h2>{tr('Let’s work it out.')}</h2>
           <label className="field">
-            Subject
+            {tr('Subject')}
             <input
               required
               minLength={3}
@@ -792,15 +824,16 @@ function SupportInner() {
             />
           </label>
           <label className="field">
-            Order ID <small>(optional)</small>
+            {tr('Order ID ')}
+            <small>{tr('(optional)')}</small>
             <input
               value={order}
               onChange={(e) => setOrder(e.target.value)}
-              placeholder="Full order ID from the order detail page"
+              placeholder={tr('Full order ID from the order detail page')}
             />
           </label>
           <label className="field">
-            What happened?
+            {tr('What happened?')}
             <textarea
               required
               minLength={10}
@@ -812,12 +845,12 @@ function SupportInner() {
           </label>
           <ErrorNotice error={action.error} />
           <button className="button" disabled={action.busy}>
-            Create support case
+            {tr('Create support case')}
             <ArrowRight size={16} />
           </button>
         </form>
         <div>
-          <h2>Your cases</h2>
+          <h2>{tr('Your cases')}</h2>
           <ErrorNotice error={error} />
           {data?.length ? (
             data.map((c: Row) => (
@@ -827,7 +860,7 @@ function SupportInner() {
                 <p>{c.body}</p>
                 {c.response && (
                   <div className="notice">
-                    <strong>Operations response</strong>
+                    <strong>{tr('Operations response')}</strong>
                     <p>{c.response}</p>
                   </div>
                 )}
@@ -836,8 +869,8 @@ function SupportInner() {
             ))
           ) : (
             <Empty
-              title="No cases open"
-              description="If you need a hand, your conversation starts here."
+              title={tr('No cases open')}
+              description={tr('If you need a hand, your conversation starts here.')}
             />
           )}
         </div>

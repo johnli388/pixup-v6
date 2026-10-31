@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import { OwnerTransfers, TransferRequest } from './identity-access';
 import type {
   Invitation,
@@ -6,9 +7,11 @@ import type {
 } from '../../../packages/domain/contracts';
 import { useState } from 'react';
 import { useSession, useData, useAction } from './providers';
-import { ErrorNotice, Loading, Status, date } from './ui';
+import { ErrorNotice, Loading, Status } from './ui';
 
 export function OrganizationSettings() {
+  const { t: tr, date } = useI18n();
+
   const { user, clearPrivateData } = useSession();
   const { data: invitations, error } = useData<Invitation[]>('/me/invitations');
   const action = useAction();
@@ -19,10 +22,11 @@ export function OrganizationSettings() {
   const org = organizations.find((o) => o.id === chosen) || organizations[0];
   return (
     <section className="panel settings-panel">
-      <h2>Workspace invitations</h2>
+      <h2>{tr('Workspace invitations')}</h2>
       <p>
-        Invitations appear for the addressed account. When verified invitation delivery is enabled,
-        open the email link before accepting.
+        {tr(
+          'Invitations appear for the addressed account. When verified invitation delivery is enabled, open the email link before accepting.',
+        )}
       </p>
       <ErrorNotice error={error || action.error} />
       {!invitations ? (
@@ -33,7 +37,9 @@ export function OrganizationSettings() {
             <div>
               <strong>{invitation.organization_name}</strong>
               <p>
-                {invitation.role} · Expires {date(invitation.expires_at)}
+                {invitation.role}
+                {tr(' · Expires ')}
+                {date(invitation.expires_at)}
               </p>
             </div>
             <button
@@ -47,19 +53,19 @@ export function OrganizationSettings() {
                 )
               }
             >
-              Accept invitation
+              {tr('Accept invitation')}
             </button>
           </div>
         ))
       ) : (
-        <p>No pending invitations.</p>
+        <p>{tr('No pending invitations.')}</p>
       )}
       <OwnerTransfers />
       {!!org && (
         <>
-          <h2>Manage organization</h2>
+          <h2>{tr('Manage organization')}</h2>
           <label className="field">
-            Organization
+            {tr('Organization')}
             <select
               value={org.id}
               onChange={async (e) => {
@@ -82,6 +88,8 @@ export function OrganizationSettings() {
   );
 }
 function OrganizationMembers({ org }: { org: string }) {
+  const { t: tr, date } = useI18n();
+
   const { data, error, isPending } = useData<Members>(`/organizations/${org}/members`);
   const [email, setEmail] = useState(''),
     [role, setRole] = useState('viewer');
@@ -106,7 +114,7 @@ function OrganizationMembers({ org }: { org: string }) {
         }}
       >
         <label className="field">
-          Invite account email
+          {tr('Invite account email')}
           <input
             required
             type="email"
@@ -116,18 +124,18 @@ function OrganizationMembers({ org }: { org: string }) {
           />
         </label>
         <label className="field">
-          Workspace role
+          {tr('Workspace role')}
           <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="viewer">Viewer — read collections</option>
-            <option value="publisher">Publisher — create and publish</option>
+            <option value="viewer">{tr('Viewer — read collections')}</option>
+            <option value="publisher">{tr('Publisher — create and publish')}</option>
           </select>
         </label>
         <button className="button" disabled={action.busy}>
-          Create invitation
+          {tr('Create invitation')}
         </button>
       </form>
       <ErrorNotice error={action.error} />
-      <h3>Members</h3>
+      <h3>{tr('Members')}</h3>
       {data.members.map((member) => (
         <div className="workspace-row" key={member.user_id}>
           <div>
@@ -148,19 +156,21 @@ function OrganizationMembers({ org }: { org: string }) {
                 )
               }
             >
-              Revoke access
+              {tr('Revoke access')}
             </button>
           )}
         </div>
       ))}
       <TransferRequest org={org} members={data.members} />
-      <h3>Sent invitations</h3>
+      <h3>{tr('Sent invitations')}</h3>
       {data.invitations.map((invitation) => (
         <div className="workspace-row" key={invitation.id}>
           <div>
             <strong>{invitation.email}</strong>
             <p>
-              {invitation.role} · Expires {date(invitation.expires_at)}
+              {invitation.role}
+              {tr(' · Expires ')}
+              {date(invitation.expires_at)}
             </p>
             <Status status={invitation.status} />
           </div>
@@ -176,7 +186,7 @@ function OrganizationMembers({ org }: { org: string }) {
                 )
               }
             >
-              Resend invitation email
+              {tr('Resend invitation email')}
             </button>
           )}
           {invitation.status === 'pending' && (
@@ -191,7 +201,7 @@ function OrganizationMembers({ org }: { org: string }) {
                 )
               }
             >
-              Revoke invitation
+              {tr('Revoke invitation')}
             </button>
           )}
         </div>

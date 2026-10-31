@@ -1,8 +1,11 @@
 'use client';
+import { useI18n } from './i18n';
 import { useState } from 'react';
 import { useAction, useData, type Row } from './providers';
 import { ErrorNotice, Loading, Status } from './ui';
 export function PrivacySettings() {
+  const { t: tr, dateTime } = useI18n();
+
   const { data, error, isPending } = useData<Row>('/privacy');
   const action = useAction();
   const [adult, setAdult] = useState(false),
@@ -14,18 +17,24 @@ export function PrivacySettings() {
   if (!data) return <ErrorNotice error={error} />;
   return (
     <section className="panel">
-      <h2>Privacy and pilot eligibility</h2>
+      <h2>{tr('Privacy and pilot eligibility')}</h2>
       <p>{data.policy.notice}</p>
       <p>
-        Minimum pilot age: {data.policy.minimum_age}. Current terms: {data.policy.terms_version};
-        privacy notice: {data.policy.privacy_version}.
+        {tr('Minimum pilot age: ')}
+        {data.policy.minimum_age}
+        {tr('. Current terms: ')}
+        {data.policy.terms_version}
+        {tr('; privacy notice: ')}
+        {data.policy.privacy_version}.
       </p>
       <p role="status">
         {data.eligible
-          ? 'Your current declaration permits new pilot transactions.'
+          ? tr('Your current declaration permits new pilot transactions.')
           : data.profile?.restriction
-            ? 'New commercial activity is restricted. Existing orders, refunds and support remain available.'
-            : 'Review the pilot notice and declaration before buying, listing or publishing.'}
+            ? tr(
+                'New commercial activity is restricted. Existing orders, refunds and support remain available.',
+              )
+            : tr('Review the pilot notice and declaration before buying, listing or publishing.')}
       </p>
       <ErrorNotice error={action.error} />
       {!data.profile?.restriction && (
@@ -47,8 +56,10 @@ export function PrivacySettings() {
           }}
         >
           <label className="check-row">
-            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />I
-            am at least {data.policy.minimum_age} years old.
+            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
+            {tr('I am at least ')}
+            {data.policy.minimum_age}
+            {tr(' years old.')}
           </label>
           <label className="check-row">
             <input
@@ -57,7 +68,7 @@ export function PrivacySettings() {
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
             />
-            I have reviewed and accept the local pilot terms and privacy notice above.
+            {tr('I have reviewed and accept the local pilot terms and privacy notice above.')}
           </label>
           <label className="check-row">
             <input
@@ -65,14 +76,15 @@ export function PrivacySettings() {
               checked={marketing}
               onChange={(e) => setMarketing(e.target.checked)}
             />
-            Optional marketing consent (off by default).
+            {tr('Optional marketing consent (off by default).')}
           </label>
           <p>
-            Submitting without the age declaration restricts new commercial activity until support
-            reviews your account. No birth date or identity document is collected here.
+            {tr(
+              'Submitting without the age declaration restricts new commercial activity until support reviews your account. No birth date or identity document is collected here.',
+            )}
           </p>
           <button className="button" disabled={action.busy || !agree}>
-            Save pilot declaration
+            {tr('Save pilot declaration')}
           </button>
         </form>
       )}
@@ -88,7 +100,7 @@ export function PrivacySettings() {
             )
           }
         >
-          Opt out of marketing
+          {tr('Opt out of marketing')}
         </button>
         <button
           className="button secondary"
@@ -106,7 +118,7 @@ export function PrivacySettings() {
             }
           }}
         >
-          Download account data
+          {tr('Download account data')}
         </button>
       </div>
       <form
@@ -120,17 +132,17 @@ export function PrivacySettings() {
           );
         }}
       >
-        <h3>Request privacy support</h3>
+        <h3>{tr('Request privacy support')}</h3>
         <label>
-          Request type
+          {tr('Request type')}
           <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="restrict">Restrict new commercial activity</option>
-            <option value="delete">Request account closure</option>
-            <option value="age_review">Review age restriction or restore access</option>
+            <option value="restrict">{tr('Restrict new commercial activity')}</option>
+            <option value="delete">{tr('Request account closure')}</option>
+            <option value="age_review">{tr('Review age restriction or restore access')}</option>
           </select>
         </label>
         <label>
-          Request details (no identity documents)
+          {tr('Request details (no identity documents)')}
           <textarea
             required
             minLength={10}
@@ -140,34 +152,39 @@ export function PrivacySettings() {
           />
         </label>
         <p>
-          Restriction and closure requests stop new transactions immediately. Closure may require
-          retention review when orders, custody or shared business records exist. Financial and
-          audit records are not automatically erased.
+          {tr(
+            'Restriction and closure requests stop new transactions immediately. Closure may require retention review when orders, custody or shared business records exist. Financial and audit records are not automatically erased.',
+          )}
         </p>
         <button className="button secondary" disabled={action.busy}>
-          Submit privacy request
+          {tr('Submit privacy request')}
         </button>
       </form>
       {data.requests.map((r: Row) => (
         <div className="notice" key={r.id}>
           <strong>{r.kind.replaceAll('_', ' ')} · </strong>
           <Status status={r.status} />
-          <p>{r.decision_note || 'Awaiting support review.'}</p>
-          <small>Internal review target: {new Date(r.due_at).toLocaleDateString()}</small>
+          <p>{r.decision_note || tr('Awaiting support review.')}</p>
+          <small>
+            {tr('Internal review target: ')}
+            {dateTime(r.due_at)}
+          </small>
         </div>
       ))}
     </section>
   );
 }
 export function PrivacyQueue() {
+  const { t: tr, dateTime } = useI18n();
+
   const { data, error, isPending } = useData<Row[]>('/ops/privacy');
   const action = useAction();
   if (isPending) return <Loading />;
   return (
     <section>
-      <h2>Privacy request queue</h2>
+      <h2>{tr('Privacy request queue')}</h2>
       <ErrorNotice error={error || action.error} />
-      {data?.length === 0 && <p>No open requests.</p>}
+      {data?.length === 0 && <p>{tr('No open requests.')}</p>}
       {data?.map((r) => (
         <form
           className="panel channel-form"
@@ -182,25 +199,29 @@ export function PrivacyQueue() {
             {r.kind.replaceAll('_', ' ')} · {r.user_id}
           </h3>
           <p>{r.note}</p>
-          <p>Review by {new Date(r.due_at).toLocaleString()}</p>
+          <p>
+            {tr('Review by ')}
+            {dateTime(r.due_at)}
+          </p>
           <label>
-            Decision
+            {tr('Decision')}
             <select name="action">
-              <option value="complete">Complete request</option>
-              <option value="restore_access">Restore access after review</option>
-              <option value="reject">Reject with explanation</option>
+              <option value="complete">{tr('Complete request')}</option>
+              <option value="restore_access">{tr('Restore access after review')}</option>
+              <option value="reject">{tr('Reject with explanation')}</option>
             </select>
           </label>
           <label>
-            User-facing explanation
+            {tr('User-facing explanation')}
             <textarea name="note" required minLength={10} maxLength={2000} />
           </label>
           <p>
-            Account closure is permitted only for accounts without business or custody history. A
-            restore-access decision requires a fresh user declaration.
+            {tr(
+              'Account closure is permitted only for accounts without business or custody history. A restore-access decision requires a fresh user declaration.',
+            )}
           </p>
           <button className="button" disabled={action.busy}>
-            Record privacy decision
+            {tr('Record privacy decision')}
           </button>
         </form>
       ))}
@@ -208,24 +229,30 @@ export function PrivacyQueue() {
   );
 }
 export function MonitoringPanel() {
+  const { t: tr, dateTime } = useI18n();
+
   const { data, error, isPending, refetch } = useData<Row>('/ops/monitoring');
   const action = useAction();
   if (isPending) return <Loading />;
   return (
     <section>
-      <h2>Operational health</h2>
+      <h2>{tr('Operational health')}</h2>
       <ErrorNotice error={error || action.error} />
       {data && (
         <>
           <p>
-            Database: {data.readiness.database} · Worker: {data.readiness.worker} · Dropped
-            telemetry: {data.dropped_events}
+            {tr('Database: ')}
+            {data.readiness.database}
+            {tr(' · Worker: ')}
+            {data.readiness.worker}
+            {tr(' · Dropped telemetry: ')}
+            {data.dropped_events}
           </p>
           <button className="button secondary" onClick={() => void refetch()}>
-            Refresh health
+            {tr('Refresh health')}
           </button>
-          <h3>Alerts</h3>
-          {!data.alerts.length && <p>No alerts have been recorded.</p>}
+          <h3>{tr('Alerts')}</h3>
+          {!data.alerts.length && <p>{tr('No alerts have been recorded.')}</p>}
           {data.alerts.map((a: Row) => (
             <form
               className="panel channel-form"
@@ -241,43 +268,46 @@ export function MonitoringPanel() {
             >
               <h4>{a.summary}</h4>
               <p>
-                {a.severity} · <Status status={a.status} /> · Last observed{' '}
-                {new Date(a.last_seen).toLocaleString()}
+                {a.severity} · <Status status={a.status} />
+                {tr(' · Last observed')} {dateTime(a.last_seen)}
               </p>
               {a.acknowledged_by && (
                 <p>
-                  Acknowledged by {a.acknowledged_by}: {a.acknowledgement}
+                  {tr('Acknowledged by ')}
+                  {a.acknowledged_by}: {a.acknowledgement}
                 </p>
               )}
               {a.status === 'active' && (
                 <>
                   <label>
-                    Incident reference and next action
+                    {tr('Incident reference and next action')}
                     <textarea name="note" required minLength={10} />
                   </label>
                   <button className="button secondary" disabled={action.busy}>
-                    Acknowledge alert
+                    {tr('Acknowledge alert')}
                   </button>
                 </>
               )}
             </form>
           ))}
-          <h3>Recent security and error events</h3>
-          <p>Request bodies, tokens, addresses, raw URLs and provider payloads are excluded.</p>
+          <h3>{tr('Recent security and error events')}</h3>
+          <p>
+            {tr('Request bodies, tokens, addresses, raw URLs and provider payloads are excluded.')}
+          </p>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Time</th>
-                  <th>Route</th>
-                  <th>Status</th>
-                  <th>Reference</th>
+                  <th>{tr('Time')}</th>
+                  <th>{tr('Route')}</th>
+                  <th>{tr('Status')}</th>
+                  <th>{tr('Reference')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.events.map((e: Row) => (
                   <tr key={e.id}>
-                    <td>{new Date(e.created_at).toLocaleTimeString()}</td>
+                    <td>{dateTime(e.created_at)}</td>
                     <td>
                       {e.method} {e.route}
                     </td>

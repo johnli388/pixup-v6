@@ -1,12 +1,15 @@
 'use client';
+import { useI18n } from './i18n';
 import { useState } from 'react';
 import type { PaymentQueue } from '../../../packages/domain/contracts';
 import { useData, useAction } from './providers';
-import { Loading, ErrorNotice, Empty, Modal, money, date, Status } from './ui';
+import { Loading, ErrorNotice, Empty, Modal, Status } from './ui';
 import { PaymentControlPanel } from './payment-controls';
 
 type Payment = PaymentQueue['items'][number];
 export function PaymentOperations() {
+  const { t: tr, money, date } = useI18n();
+
   const [cursor, setCursor] = useState('');
   const [selected, setSelected] = useState<Payment | null>(null);
   const { data, error, isPending } = useData<PaymentQueue>(
@@ -17,29 +20,28 @@ export function PaymentOperations() {
   return (
     <>
       <div className="notice subtle">
-        <strong>Stripe test payment recovery</strong>
+        <strong>{tr('Stripe test payment recovery')}</strong>
         <p>
-          Reconcile the original payment before releasing inventory. Full refunds return cash
-          through Stripe and restore original credits after confirmation. Partial adjustments,
-          failed-refund review and provider disputes use the controls below. Live payments remain
-          disabled.
+          {tr(
+            'Reconcile the original payment before releasing inventory. Full refunds return cash through Stripe and restore original credits after confirmation. Partial adjustments, failed-refund review and provider disputes use the controls below. Live payments remain disabled.',
+          )}
         </p>
       </div>
       {!data.items.length ? (
         <Empty
-          title="No Stripe test orders"
-          description="Orders using Stripe test checkout appear here."
+          title={tr('No Stripe test orders')}
+          description={tr('Orders using Stripe test checkout appear here.')}
         />
       ) : (
         <div className="panel table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Order / collectible</th>
-                <th>Cash / credits</th>
-                <th>Payment / refund</th>
-                <th>Review owner / deadline</th>
-                <th>Action</th>
+                <th>{tr('Order / collectible')}</th>
+                <th>{tr('Cash / credits')}</th>
+                <th>{tr('Payment / refund')}</th>
+                <th>{tr('Review owner / deadline')}</th>
+                <th>{tr('Action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -53,26 +55,32 @@ export function PaymentOperations() {
                   <td>
                     {money(row.total_cents)}
                     <br />
-                    {row.credit_units} credits
+                    {row.credit_units}
+                    {tr(' credits')}
                   </td>
                   <td>
                     <Status status={row.payment_status} />
-                    {row.refund_status && <p>Refund: {row.refund_status.replaceAll('_', ' ')}</p>}
+                    {row.refund_status && (
+                      <p>
+                        {tr('Refund: ')}
+                        {row.refund_status.replaceAll('_', ' ')}
+                      </p>
+                    )}
                   </td>
                   <td>
                     {row.review_status === 'open' ? (
                       <>
                         {row.review_reason?.replaceAll('_', ' ')}
                         <br />
-                        {row.assigned_to || 'Unassigned'} · {row.due_at ? date(row.due_at) : ''}
+                        {row.assigned_to || tr('Unassigned')} · {row.due_at ? date(row.due_at) : ''}
                       </>
                     ) : (
-                      'No open review'
+                      tr('No open review')
                     )}
                   </td>
                   <td>
                     <button className="button small secondary" onClick={() => setSelected(row)}>
-                      Review payment
+                      {tr('Review payment')}
                     </button>
                   </td>
                 </tr>
@@ -83,14 +91,14 @@ export function PaymentOperations() {
       )}
       <div className="button-row">
         <button className="button secondary" disabled={!cursor} onClick={() => setCursor('')}>
-          First page
+          {tr('First page')}
         </button>
         <button
           className="button secondary"
           disabled={!data.next_cursor}
           onClick={() => setCursor(data.next_cursor!)}
         >
-          Next page
+          {tr('Next page')}
         </button>
       </div>
       <PaymentControlPanel />
@@ -99,6 +107,8 @@ export function PaymentOperations() {
   );
 }
 function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () => void }) {
+  const { t: tr, money } = useI18n();
+
   const action = useAction();
   const [note, setNote] = useState(''),
     [reference, setReference] = useState(''),
@@ -111,25 +121,28 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
   const refundPending =
     p.refund_status && !['succeeded', 'failed', 'canceled'].includes(p.refund_status);
   return (
-    <Modal title="Review Stripe test payment" onClose={onClose}>
+    <Modal title={tr('Review Stripe test payment')} onClose={onClose}>
       <p>
         <strong>{p.title}</strong>
         <br />
         {p.id}
       </p>
       <p>
-        Remaining cash: {money(p.total_cents - (p.adjusted_cash_cents || 0))} · Credits:{' '}
-        {p.credit_units}. Refunds require retained vault custody and held settlement. Returned or
-        resold items need separate investigation.
+        {tr('Remaining cash: ')}
+        {money(p.total_cents - (p.adjusted_cash_cents || 0))}
+        {tr(' · Credits:')} {p.credit_units}
+        {tr(
+          '. Refunds require retained vault custody and held settlement. Returned or resold items need separate investigation.',
+        )}
       </p>
       <p>
-        Original session:{' '}
+        {tr('Original session:')}{' '}
         {p.provider_session_id ||
-          'Unknown — find the original session in the Stripe test dashboard.'}
+          tr('Unknown — find the original session in the Stripe test dashboard.')}
       </p>
       <ErrorNotice error={action.error} />
       <label>
-        Review note
+        {tr('Review note')}
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -140,11 +153,11 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
       {((p.review_status === 'open' && !p.provider_session_id) ||
         (refundPending && !p.provider_refund_id)) && (
         <label>
-          {refundPending ? 'Original refund ID (optional)' : 'Original Checkout Session ID'}
+          {refundPending ? tr('Original refund ID (optional)') : tr('Original Checkout Session ID')}
           <input
             value={reference}
             onChange={(e) => setReference(e.target.value)}
-            placeholder={refundPending ? 're_…' : 'cs_test_…'}
+            placeholder={refundPending ? tr('re_…') : tr('cs_test_…')}
             maxLength={255}
           />
         </label>
@@ -156,7 +169,7 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
             disabled={action.busy}
             onClick={() => void run('/claim', { expected_version: p.version })}
           >
-            Assign review to me
+            {tr('Assign review to me')}
           </button>
           <button
             className="button"
@@ -170,7 +183,7 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
               })
             }
           >
-            Reconcile original payment
+            {tr('Reconcile original payment')}
           </button>
           <button
             className="button secondary"
@@ -184,7 +197,7 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
               })
             }
           >
-            Cancel if still unpaid
+            {tr('Cancel if still unpaid')}
           </button>
         </div>
       )}
@@ -196,7 +209,7 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
             void run('/refund-status', { note, ...(reference ? { refund_id: reference } : {}) })
           }
         >
-          Check original refund
+          {tr('Check original refund')}
         </button>
       ) : !p.refund_id && ['paid', 'fulfilled', 'pending_payment'].includes(p.status) ? (
         <>
@@ -206,20 +219,23 @@ function PaymentReview({ payment: p, onClose }: { payment: Payment; onClose: () 
               checked={confirm}
               onChange={(e) => setConfirm(e.target.checked)}
             />
-            I reviewed custody, payment and the full refund amount.
+            {tr('I reviewed custody, payment and the full refund amount.')}
           </label>
           <button
             className="button"
             disabled={!ready || !confirm}
             onClick={() => void run('/refund', { reason: note })}
           >
-            Issue full test refund
+            {tr('Issue full test refund')}
           </button>
         </>
       ) : (
         <p>
-          Refund outcome: {p.refund_status || 'No refund available'}. Failed or canceled refunds
-          require finance investigation; this workflow never silently creates a replacement.
+          {tr('Refund outcome: ')}
+          {p.refund_status || tr('No refund available')}
+          {tr(
+            '. Failed or canceled refunds require finance investigation; this workflow never silently creates a replacement.',
+          )}
         </p>
       )}
     </Modal>

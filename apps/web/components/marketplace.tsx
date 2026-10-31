@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import { CommercialTerms } from './commercial';
 import { ItemPassport } from './item-passport';
 import { PriceReference } from './price-trust';
@@ -36,11 +37,11 @@ import {
   CollectionCard,
   ErrorNotice,
   AccountGate,
-  money,
-  date,
 } from './ui';
 
 export function Discover({ catalog }: { catalog: Row }) {
+  const { t: tr } = useI18n();
+
   const { user } = useSession();
   const { data: portfolio } = useData('/portfolio', !!user);
   const saved = new Set(portfolio?.saved?.map((a: Row) => a.id));
@@ -48,35 +49,36 @@ export function Discover({ catalog }: { catalog: Row }) {
     <>
       <div className="discovery-heading">
         <div>
-          <span className="eyebrow">A LITTLE OBSESSION. A LOT OF POSSIBILITY.</span>
+          <span className="eyebrow">{tr('A LITTLE OBSESSION. A LOT OF POSSIBILITY.')}</span>
           <h1>
-            Collect what moves you<span>.</span>
+            {tr('Collect what moves you')}
+            <span>.</span>
           </h1>
-          <p>The cards, the culture, the stories. Find your next favorite.</p>
+          <p>{tr('The cards, the culture, the stories. Find your next favorite.')}</p>
         </div>
         <Link href="/workspace/seller" className="button secondary">
           <PlusSymbol />
-          Start selling
+          {tr('Start selling')}
         </Link>
       </div>
       <section className="hero">
         <div className="hero-copy">
           <Badge tone="lime">
             <span className="live-dot" />
-            THE NEXT CHAPTER OF COLLECTING
+            {tr('THE NEXT CHAPTER OF COLLECTING')}
           </Badge>
           <h2>
-            Great finds.
+            {tr('Great finds.')}
             <br />
-            Even better stories.
+            {tr('Even better stories.')}
           </h2>
           <p>
-            Discover extraordinary collectibles.
+            {tr('Discover extraordinary collectibles.')}
             <br />
-            Verified, cared for, and ready for you.
+            {tr('Verified, cared for, and ready for you.')}
           </p>
           <Link href="/marketplace" className="button lime">
-            Explore the marketplace
+            {tr('Explore the marketplace')}
             <ArrowUpRight size={18} />
           </Link>
           <div className="hero-foot">
@@ -85,7 +87,7 @@ export function Discover({ catalog }: { catalog: Row }) {
               <i>A</i>
               <i>M</i>
             </span>
-            <span>For the love of collecting.</span>
+            <span>{tr('For the love of collecting.')}</span>
           </div>
         </div>
         <div className="hero-art" aria-hidden="true">
@@ -101,8 +103,8 @@ export function Discover({ catalog }: { catalog: Row }) {
               <ShieldCheck size={19} />
             </span>
             <div>
-              <strong>A story you can trust</strong>
-              <small>VIA authentication & provenance</small>
+              <strong>{tr('A story you can trust')}</strong>
+              <small>{tr('VIA authentication & provenance')}</small>
             </div>
             <Check size={16} />
           </div>
@@ -112,22 +114,22 @@ export function Discover({ catalog }: { catalog: Row }) {
         <div>
           <ShieldCheck />
           <span>
-            <strong>Trust comes standard</strong>
-            <small>Authentication you can trace</small>
+            <strong>{tr('Trust comes standard')}</strong>
+            <small>{tr('Authentication you can trace')}</small>
           </span>
         </div>
         <div>
           <Box />
           <span>
-            <strong>Your collection, cared for</strong>
-            <small>Secure vault custody</small>
+            <strong>{tr('Your collection, cared for')}</strong>
+            <small>{tr('Secure vault custody')}</small>
           </span>
         </div>
         <div>
           <Repeat2 />
           <span>
-            <strong>Keep the story going</strong>
-            <small>Collect, sell, and recirculate</small>
+            <strong>{tr('Keep the story going')}</strong>
+            <small>{tr('Collect, sell, and recirculate')}</small>
           </span>
         </div>
       </div>
@@ -141,23 +143,27 @@ export function Discover({ catalog }: { catalog: Row }) {
           <Link key={name} href={`/marketplace?category=${encodeURIComponent(name)}`}>
             <span className={`category-icon ${name.toLowerCase()}`}>{symbol}</span>
             <span>
-              <strong>{name}</strong>
-              <small>{desc}</small>
+              <strong>{tr(name)}</strong>
+              <small>{tr(desc)}</small>
             </span>
             <ArrowUpRight size={17} />
           </Link>
         ))}
       </div>
-      <SectionTitle title="Worth a closer look" href="/marketplace" label="Explore all" />
+      <SectionTitle
+        title={tr('Worth a closer look')}
+        href="/marketplace"
+        label={tr('Explore all')}
+      />
       <div className="product-grid">
         {catalog.items.slice(0, 4).map((a: Row) => (
           <ItemCard key={a.id} item={a} saved={saved.has(a.id)} />
         ))}
       </div>
       <div className="section-sub">
-        <span>Handpicked from the demo vault. Your next favorite might be right here.</span>
+        <span>{tr('Handpicked from the demo vault. Your next favorite might be right here.')}</span>
       </div>
-      <SectionTitle title="Collections with a point of view" href="/collections" />
+      <SectionTitle title={tr('Collections with a point of view')} href="/collections" />
       <div className="collection-grid">
         {catalog.collections.slice(0, 3).map((c: Row) => (
           <CollectionCard key={c.id} collection={c} />
@@ -166,12 +172,12 @@ export function Discover({ catalog }: { catalog: Row }) {
       <section className="bottom-banner">
         <div className="banner-icon">✳</div>
         <div>
-          <span className="eyebrow">MADE BY YOU. COLLECTED BY THEM.</span>
-          <h2>Your ideas deserve a first edition.</h2>
-          <p>Publish your collection with a little help from PixUP.</p>
+          <span className="eyebrow">{tr('MADE BY YOU. COLLECTED BY THEM.')}</span>
+          <h2>{tr('Your ideas deserve a first edition.')}</h2>
+          <p>{tr('Publish your collection with a little help from PixUP.')}</p>
         </div>
         <Link href="/workspace/creator" className="button secondary">
-          Explore creator studio
+          {tr('Explore creator studio')}
           <ArrowUpRight size={17} />
         </Link>
       </section>
@@ -182,6 +188,8 @@ function PlusSymbol() {
   return <span className="plus-symbol">+</span>;
 }
 export function Marketplace({ catalog }: { catalog: Row }) {
+  const { t: tr, plural } = useI18n();
+
   const params = useSearchParams();
   const { user } = useSession();
   const { data: portfolio } = useData('/portfolio', !!user);
@@ -194,7 +202,7 @@ export function Marketplace({ catalog }: { catalog: Row }) {
     let rows = catalog.items.filter(
       (a: Row) =>
         (category === 'All' || a.category === category) &&
-        `${a.title} ${a.collection_title} ${a.category} ${Object.values(a.catalog_attributes || {}).join(' ')}`
+        `${a.title} ${a.collection_title} ${a.category} ${tr(a.category)} ${Object.values(a.catalog_attributes || {}).join(' ')}`
           .toLowerCase()
           .includes(q.toLowerCase()) &&
         (!max || a.price_cents <= Number(max) * 100) &&
@@ -203,32 +211,32 @@ export function Marketplace({ catalog }: { catalog: Row }) {
     if (sort === 'low') rows = [...rows].sort((a: Row, b: Row) => a.price_cents - b.price_cents);
     if (sort === 'high') rows = [...rows].sort((a: Row, b: Row) => b.price_cents - a.price_cents);
     return rows;
-  }, [catalog, category, q, max, sort, onlyPlatform]);
+  }, [catalog, category, q, max, sort, onlyPlatform, tr]);
   return (
     <>
       <PageTitle
-        eyebrow="THE GOOD FINDS LIVE HERE"
-        title="The marketplace"
-        description="One-of-a-kind finds. A history behind every one."
+        eyebrow={tr('THE GOOD FINDS LIVE HERE')}
+        title={tr('The marketplace')}
+        description={tr('One-of-a-kind finds. A history behind every one.')}
       />
       <div className="market-tools">
-        <div className="tabs" aria-label="Collectible categories">
+        <div className="tabs" aria-label={tr('Collectible categories')}>
           {['All', 'Sports', 'K-pop', 'Art', 'Gaming'].map((c) => (
             <button
               key={c}
               className={category === c ? 'selected' : ''}
               onClick={() => setCategory(c)}
             >
-              {c === 'All' ? 'All collectibles' : c}
+              {c === 'All' ? tr('All collectibles') : tr(c)}
             </button>
           ))}
         </div>
         <label className="sort-control">
-          Sort by
+          {tr('Sort by')}
           <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="curated">Curated picks</option>
-            <option value="low">Price: low to high</option>
-            <option value="high">Price: high to low</option>
+            <option value="curated">{tr('Curated picks')}</option>
+            <option value="low">{tr('Price: low to high')}</option>
+            <option value="high">{tr('Price: high to low')}</option>
           </select>
         </label>
       </div>
@@ -236,19 +244,20 @@ export function Marketplace({ catalog }: { catalog: Row }) {
         <label className="search-field">
           <Search size={17} />
           <input
-            aria-label="Filter collectibles"
-            placeholder="Search a card, collection, or category"
+            aria-label={tr('Filter collectibles')}
+            placeholder={tr('Search a card, collection, or category')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </label>
         <label className="price-filter">
-          <SlidersHorizontal size={16} /> Max price{' '}
+          <SlidersHorizontal size={16} />
+          {tr(' Max price')}{' '}
           <input
-            aria-label="Maximum price in dollars"
+            aria-label={tr('Maximum price in dollars')}
             type="number"
             min="0"
-            placeholder="$ Any"
+            placeholder={tr('$ Any')}
             value={max}
             onChange={(e) => setMax(e.target.value)}
           />
@@ -259,11 +268,12 @@ export function Marketplace({ catalog }: { catalog: Row }) {
             checked={onlyPlatform}
             onChange={(e) => setOnlyPlatform(e.target.checked)}
           />
-          Accepts credits
+          {tr('Accepts credits')}
         </label>
       </div>
       <p className="result-count">
-        {items.length} collectibles <span>· Individually registered, ready for a new chapter</span>
+        {plural(items.length, '{count} collectible', '{count} collectibles')}{' '}
+        <span>{tr('· Individually registered, ready for a new chapter')}</span>
       </p>
       {items.length ? (
         <div className="product-grid">
@@ -277,8 +287,8 @@ export function Marketplace({ catalog }: { catalog: Row }) {
         </div>
       ) : (
         <Empty
-          title="No finds just yet"
-          description="Try a different search or give those filters a little breathing room."
+          title={tr('No finds just yet')}
+          description={tr('Try a different search or give those filters a little breathing room.')}
         >
           <button
             className="button secondary"
@@ -289,7 +299,7 @@ export function Marketplace({ catalog }: { catalog: Row }) {
               setOnlyPlatform(false);
             }}
           >
-            Reset filters
+            {tr('Reset filters')}
           </button>
         </Empty>
       )}
@@ -297,6 +307,8 @@ export function Marketplace({ catalog }: { catalog: Row }) {
   );
 }
 export function Collections({ catalog, id }: { catalog: Row; id?: string }) {
+  const { t: tr } = useI18n();
+
   const { data, error, isPending } = useData(`/collections/${id}`, !!id);
   if (id && isPending) return <Loading />;
   if (error) return <ErrorNotice error={error} />;
@@ -312,14 +324,17 @@ export function Collections({ catalog, id }: { catalog: Row; id?: string }) {
           <span className="creator-avatar">✳</span>
           <div>
             <strong>{data.creator_name}</strong>
-            <p>Original demo collection · Edition of {data.edition_size}</p>
+            <p>
+              {tr('Original demo collection · Edition of ')}
+              {data.edition_size}
+            </p>
           </div>
           <Badge tone="green">
             <ShieldCheck size={13} />
-            Publisher reviewed
+            {tr('Publisher reviewed')}
           </Badge>
         </div>
-        <SectionTitle title="Find your edition" />
+        <SectionTitle title={tr('Find your edition')} />
         {data.items.length ? (
           <div className="product-grid">
             {data.items.map((a: Row) => (
@@ -328,8 +343,8 @@ export function Collections({ catalog, id }: { catalog: Row; id?: string }) {
           </div>
         ) : (
           <Empty
-            title="Every edition has found a home"
-            description="Explore other collections while you wait for new listings."
+            title={tr('Every edition has found a home')}
+            description={tr('Explore other collections while you wait for new listings.')}
           />
         )}
       </>
@@ -337,9 +352,11 @@ export function Collections({ catalog, id }: { catalog: Row; id?: string }) {
   return (
     <>
       <PageTitle
-        eyebrow="GOOD IDEAS BECOME GREAT COLLECTIONS"
-        title="A world worth collecting"
-        description="Explore independent voices, original editions, and a little of the unexpected."
+        eyebrow={tr('GOOD IDEAS BECOME GREAT COLLECTIONS')}
+        title={tr('A world worth collecting')}
+        description={tr(
+          'Explore independent voices, original editions, and a little of the unexpected.',
+        )}
       />
       <div className="collection-grid">
         {catalog.collections.map((c: Row) => (
@@ -350,6 +367,8 @@ export function Collections({ catalog, id }: { catalog: Row; id?: string }) {
   );
 }
 export function ItemDetail({ id }: { id: string }) {
+  const { t: tr, money, date } = useI18n();
+
   const { data: item, error, isPending } = useData(`/assets/${id}`);
   const [tab, setTab] = useState('Details');
   if (isPending) return <Loading />;
@@ -357,11 +376,11 @@ export function ItemDetail({ id }: { id: string }) {
   return (
     <>
       <div className="breadcrumbs">
-        <Link href="/marketplace">Marketplace</Link>
+        <Link href="/marketplace">{tr('Marketplace')}</Link>
         <ChevronRight size={13} />
-        <span>{item.category}</span>
+        <span>{tr(item.category)}</span>
         <ChevronRight size={13} />
-        <span>{item.collection_title || 'Independent collectible'}</span>
+        <span>{item.collection_title || tr('Independent collectible')}</span>
       </div>
       <div className="detail-grid">
         <div className={`detail-gallery art-bg-${item.artwork}`}>
@@ -369,8 +388,8 @@ export function ItemDetail({ id }: { id: string }) {
           <span className="gallery-label">
             <ScanLine size={15} />
             {item.artwork.startsWith('media:')
-              ? 'Uploaded collectible artwork'
-              : 'Original demonstration artwork'}
+              ? tr('Uploaded collectible artwork')
+              : tr('Original demonstration artwork')}
           </span>
         </div>
         <div className="detail-copy">
@@ -383,63 +402,71 @@ export function ItemDetail({ id }: { id: string }) {
             <Badge tone={item.certification === 'verified' ? 'green' : 'neutral'}>
               <ShieldCheck size={14} />
               {item.certification === 'verified'
-                ? 'VIA authenticity recorded'
+                ? tr('VIA authenticity recorded')
                 : item.certification === 'unverified'
-                  ? 'Not yet VIA assessed'
+                  ? tr('Not yet VIA assessed')
                   : item.certification}
             </Badge>
-            <Badge>Condition: {item.grade}</Badge>
+            <Badge>
+              {tr('Condition: ')}
+              {item.grade}
+            </Badge>
             <Badge>
               <Box size={13} />
-              {item.custody === 'vault' ? 'Held in PixUP vault' : item.custody}
+              {item.custody === 'vault' ? tr('Held in PixUP vault') : item.custody}
             </Badge>
           </div>
           <p className="description">{item.description}</p>
           <div className="seller-row">
             <span className="avatar">{(item.seller_name || 'PX').slice(0, 2)}</span>
             <div>
-              <small>{item.is_owner ? 'In your collection' : 'Listed by'}</small>
-              <strong>{item.is_owner ? 'You' : item.seller_name || 'Not currently listed'}</strong>
+              <small>{item.is_owner ? tr('In your collection') : tr('Listed by')}</small>
+              <strong>
+                {item.is_owner ? tr('You') : item.seller_name || tr('Not currently listed')}
+              </strong>
             </div>
-            {item.platform_owned && <Badge tone="green">PixUP owned</Badge>}
+            {item.platform_owned && <Badge tone="green">{tr('PixUP owned')}</Badge>}
           </div>
           <div className="purchase-panel">
-            <small>{item.listing_status === 'active' ? 'Current price' : 'Listing status'}</small>
+            <small>
+              {item.listing_status === 'active' ? tr('Current price') : tr('Listing status')}
+            </small>
             <div className="big-price">
-              {item.price_cents ? money(item.price_cents) : 'Not listed'}
-              <span>USD</span>
+              {item.price_cents ? money(item.price_cents) : tr('Not listed')}
+              <span>{tr('USD')}</span>
             </div>
-            <p>Keep it in the vault, or choose delivery at checkout.</p>
+            <p>{tr('Keep it in the vault, or choose delivery at checkout.')}</p>
             {item.is_owner ? (
               <Link className="button full" href="/workspace/seller">
-                Manage this collectible <ArrowRight size={17} />
+                {tr('Manage this collectible ')}
+                <ArrowRight size={17} />
               </Link>
             ) : item.listing_status === 'active' ? (
               <Link
                 className="button full"
                 href={item.channel_id ? `/channels/${item.channel_id}` : `/checkout/${id}`}
               >
-                Make it yours
+                {tr('Make it yours')}
                 <ArrowRight size={17} />
               </Link>
             ) : (
               <button className="button full" disabled>
                 {item.listing_status === 'reserved'
-                  ? 'Reserved for another collector'
-                  : 'Currently unavailable'}
+                  ? tr('Reserved for another collector')
+                  : tr('Currently unavailable')}
               </button>
             )}
             <span className="purchase-note">
               <LockKeyhole size={12} />
-              Demo checkout · No real payment collected
+              {tr('Demo checkout · No real payment collected')}
             </span>
           </div>
           {item.certificate_id && (
             <Link className="certificate-link" href={`/verify/${item.certificate_id}`}>
               <ShieldCheck size={21} />
               <span>
-                <strong>Its story is part of the collectible.</strong>
-                <small>View VIA certificate & assessment details</small>
+                <strong>{tr('Its story is part of the collectible.')}</strong>
+                <small>{tr('View VIA certificate & assessment details')}</small>
               </span>
               <ArrowUpRight size={17} />
             </Link>
@@ -453,7 +480,7 @@ export function ItemDetail({ id }: { id: string }) {
           <div className="tabs">
             {['Details', 'Provenance', 'Price reference'].map((t) => (
               <button key={t} onClick={() => setTab(t)} className={tab === t ? 'selected' : ''}>
-                {t}
+                {tr(t)}
               </button>
             ))}
           </div>
@@ -479,7 +506,9 @@ export function ItemDetail({ id }: { id: string }) {
                 <div key={h.id}>
                   <span className="timeline-dot" />
                   <small>
-                    {date(h.created_at)} · Event {h.sequence}
+                    {date(h.created_at)}
+                    {tr(' · Event ')}
+                    {h.sequence}
                   </small>
                   <strong>{h.type.replaceAll('_', ' ')}</strong>
                   <p>{h.description}</p>
@@ -492,20 +521,22 @@ export function ItemDetail({ id }: { id: string }) {
           )}
         </div>
         <aside className="detail-aside">
-          <h3>A little more peace of mind.</h3>
+          <h3>{tr('A little more peace of mind.')}</h3>
           <p>
             <ShieldCheck size={19} />
-            Authentication recorded with the item
+            {tr('Authentication recorded with the item')}
           </p>
           <p>
             <Box size={19} />
-            Custody tracked independently of ownership
+            {tr('Custody tracked independently of ownership')}
           </p>
           <p>
-            <Repeat2 size={19} />A history that follows every new chapter
+            <Repeat2 size={19} />
+            {tr('A history that follows every new chapter')}
           </p>
           <Link href="/account/support">
-            Questions? We’re here to help <ArrowUpRight size={14} />
+            {tr('Questions? We’re here to help ')}
+            <ArrowUpRight size={14} />
           </Link>
         </aside>
       </div>
@@ -520,6 +551,8 @@ export function Checkout({ assetId }: { assetId: string }) {
   );
 }
 function CheckoutInner({ assetId }: { assetId: string }) {
+  const { t: tr, money } = useI18n();
+
   const router = useRouter();
   const { data: item, error, isPending } = useData(`/assets/${assetId}`);
   const { data: credits } = useData('/credits');
@@ -574,13 +607,13 @@ function CheckoutInner({ assetId }: { assetId: string }) {
   return (
     <>
       <PageTitle
-        eyebrow="ONE STEP CLOSER"
-        title="Make it part of your story."
-        description="Review your collectible and decide where its next chapter begins."
+        eyebrow={tr('ONE STEP CLOSER')}
+        title={tr('Make it part of your story.')}
+        description={tr('Review your collectible and decide where its next chapter begins.')}
       />
       <div className="checkout-grid">
         <form className="panel checkout-form" onSubmit={review}>
-          <h2>Where should we keep it?</h2>
+          <h2>{tr('Where should we keep it?')}</h2>
           <label className={`choice ${fulfillment === 'vault' ? 'chosen' : ''}`}>
             <input
               type="radio"
@@ -593,10 +626,12 @@ function CheckoutInner({ assetId }: { assetId: string }) {
             />
             <Box />
             <span>
-              <strong>Keep in the PixUP vault</strong>
-              <small>Ownership transfers to you. The collectible stays securely stored.</small>
+              <strong>{tr('Keep in the PixUP vault')}</strong>
+              <small>
+                {tr('Ownership transfers to you. The collectible stays securely stored.')}
+              </small>
             </span>
-            <b>Free</b>
+            <b>{tr('Free')}</b>
           </label>
           <label className={`choice ${fulfillment === 'ship' ? 'chosen' : ''}`}>
             <input
@@ -610,14 +645,14 @@ function CheckoutInner({ assetId }: { assetId: string }) {
             />
             <Globe />
             <span>
-              <strong>Deliver to me</strong>
-              <small>Demo shipping workflow. No actual package will be sent.</small>
+              <strong>{tr('Deliver to me')}</strong>
+              <small>{tr('Demo shipping workflow. No actual package will be sent.')}</small>
             </span>
             <b>$8</b>
           </label>
           {fulfillment === 'ship' && (
             <label className="field">
-              Demo shipping address
+              {tr('Demo shipping address')}
               <textarea
                 minLength={12}
                 maxLength={1000}
@@ -627,11 +662,11 @@ function CheckoutInner({ assetId }: { assetId: string }) {
                   setAddress(e.target.value);
                   setQuote(null);
                 }}
-                placeholder="Use a fictional address for this demonstration."
+                placeholder={tr('Use a fictional address for this demonstration.')}
               />
             </label>
           )}
-          <h2>Your credits</h2>
+          <h2>{tr('Your credits')}</h2>
           {item.platform_owned ? (
             <label className="checkbox">
               <input
@@ -642,20 +677,26 @@ function CheckoutInner({ assetId }: { assetId: string }) {
                   setQuote(null);
                 }}
               />
-              Use available credits ({credits?.available || 0})
+              {tr('Use available credits (')}
+              {credits?.available || 0})
             </label>
           ) : (
             <p className="muted">
-              Credits are available on PixUP-owned inventory only. This collectible belongs to an
-              independent seller.
+              {tr(
+                'Credits are available on PixUP-owned inventory only. This collectible belongs to an independent seller.',
+              )}
             </p>
           )}
           <div className="notice subtle">
-            <strong>This is a demonstration.</strong>
+            <strong>{tr('This is a demonstration.')}</strong>
             <p>
               {stripe
-                ? 'Stripe collects test payment details on its hosted checkout page. No real money moves. Credits remain demo units; tax and carrier integration are not enabled.'
-                : 'No real money moves. Demo credits use 100 credits = $1. Tax calculation, payment-provider processing, and carrier integration are not enabled.'}
+                ? tr(
+                    'Stripe collects test payment details on its hosted checkout page. No real money moves. Credits remain demo units; tax and carrier integration are not enabled.',
+                  )
+                : tr(
+                    'No real money moves. Demo credits use 100 credits = $1. Tax calculation, payment-provider processing, and carrier integration are not enabled.',
+                  )}
             </p>
           </div>
           <ErrorNotice error={action.error || paymentConfigError} />
@@ -664,7 +705,7 @@ function CheckoutInner({ assetId }: { assetId: string }) {
             disabled={action.busy || !paymentConfig}
             type="submit"
           >
-            {action.busy ? 'Preparing…' : 'Review total'}
+            {action.busy ? tr('Preparing…') : tr('Review total')}
             <ArrowRight size={16} />
           </button>
         </form>
@@ -672,59 +713,62 @@ function CheckoutInner({ assetId }: { assetId: string }) {
           <div className="summary-item">
             <CardArt variant={item.artwork} />
             <div>
-              <small>{item.category}</small>
+              <small>{tr(item.category)}</small>
               <h3>{item.title}</h3>
-              <Badge tone="green">VIA {item.grade}</Badge>
+              <Badge tone="green">
+                {tr('VIA ')}
+                {item.grade}
+              </Badge>
             </div>
           </div>
           <dl className="spec-list">
             <div>
-              <dt>Collectible</dt>
+              <dt>{tr('Collectible')}</dt>
               <dd>{money(item.price_cents || 0)}</dd>
             </div>
             <div>
-              <dt>Delivery</dt>
-              <dd>{fulfillment === 'ship' ? '$8' : 'Free vault custody'}</dd>
+              <dt>{tr('Delivery')}</dt>
+              <dd>{fulfillment === 'ship' ? '$8' : tr('Free vault custody')}</dd>
             </div>
             <div>
-              <dt>Buyer platform fee</dt>
+              <dt>{tr('Buyer platform fee')}</dt>
               <dd>$0</dd>
             </div>
             {quote && (
               <div>
-                <dt>Credits applied</dt>
+                <dt>{tr('Credits applied')}</dt>
                 <dd>−{money(quote.credit_units)}</dd>
               </div>
             )}
             <div className="total">
-              <dt>Demo total</dt>
-              <dd>{quote ? money(quote.total_cents) : 'Review to calculate'}</dd>
+              <dt>{tr('Demo total')}</dt>
+              <dd>{quote ? money(quote.total_cents) : tr('Review to calculate')}</dd>
             </div>
           </dl>
           {quote && (
             <>
               <CommercialTerms snapshot={quote.commercial_snapshot} />
               <small className="muted">
-                Quote valid for 10 minutes. Seller fees are deducted from seller proceeds.
+                {tr('Quote valid for 10 minutes. Seller fees are deducted from seller proceeds.')}
               </small>
               <button className="button full" disabled={action.busy} onClick={() => void confirm()}>
                 {action.busy
-                  ? 'Preparing payment…'
+                  ? tr('Preparing payment…')
                   : stripe
-                    ? 'Continue to Stripe Checkout'
-                    : 'Confirm demo purchase'}
+                    ? tr('Continue to Stripe Checkout')
+                    : tr('Confirm demo purchase')}
                 <LockKeyhole size={16} />
               </button>
             </>
           )}
           {orderId && (
             <Link href={`/account/orders/${orderId}`} className="text-link">
-              View or resume your order →
+              {tr('View or resume your order →')}
             </Link>
           )}
           <p className="purchase-note">
             <ShieldCheck size={13} />
-            Backed by a traceable collectible record
+            {tr('Backed by a traceable collectible record')}
           </p>
         </div>
       </div>
@@ -732,14 +776,16 @@ function CheckoutInner({ assetId }: { assetId: string }) {
   );
 }
 export function Verify({ id }: { id: string }) {
+  const { t: tr, date } = useI18n();
+
   const { data, error, isPending } = useData(`/certificates/${id}/verify`);
   if (isPending) return <Loading />;
   if (error || !data) return <ErrorNotice error={error} />;
   return (
     <>
       <PageTitle
-        eyebrow="VIA · VISUAL / INTEGRITY / AUTHENTICATION"
-        title="The record behind the collectible."
+        eyebrow={tr('VIA · VISUAL / INTEGRITY / AUTHENTICATION')}
+        title={tr('The record behind the collectible.')}
       />
       <div className="certificate-panel panel">
         <div className="certificate-art">
@@ -767,24 +813,29 @@ export function Verify({ id }: { id: string }) {
           </dl>
           <div className={`notice ${data.valid ? '' : 'warning'}`}>
             <strong>
-              {data.valid ? 'Active demo certificate' : 'Certificate is no longer active'}
+              {data.valid ? tr('Active demo certificate') : tr('Certificate is no longer active')}
             </strong>
             <p>{data.scope}</p>
-            <p>Record signature: {data.integrity?.state?.replaceAll('_', ' ') || 'unsigned'}.</p>
+            <p>
+              {tr('Record signature: ')}
+              {data.integrity?.state?.replaceAll('_', ' ') || tr('unsigned')}.
+            </p>
             {data.integrity?.signed && (
               <p>
-                Verification key: {data.integrity.key_id}. Assessment status above remains
-                authoritative for current eligibility.
+                {tr('Verification key: ')}
+                {data.integrity.key_id}
+                {tr('. Assessment status above remains authoritative for current eligibility.')}
               </p>
             )}
             <p>
               {data.integrity?.checkpoint
                 ? `Signed checkpoint ${data.integrity.checkpoint.payload.sequence} · ${data.integrity.checkpoint.current_head ? 'covers the current recorded head' : 'new history exists after this checkpoint'}.`
-                : 'No trusted checkpoint covers this record.'}
+                : tr('No trusted checkpoint covers this record.')}
             </p>
           </div>
           <Link href={`/items/${data.asset_id}`} className="button secondary">
-            See collectible history <ArrowRight size={16} />
+            {tr('See collectible history ')}
+            <ArrowRight size={16} />
           </Link>
         </div>
       </div>

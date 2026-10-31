@@ -1,22 +1,16 @@
 'use client';
+import { useI18n } from './i18n';
 import { ApiError } from './providers';
 import { useEffect, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, ShieldCheck, Heart, ArrowRight, Box, X, LoaderCircle } from 'lucide-react';
 import { CardArt } from './art';
 import { useAction, useSession, type Row } from './providers';
-export const money = (cents: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: cents % 100 ? 2 : 0,
-  }).format(cents / 100);
-export const date = (value: string) =>
-  new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: string }) {
   return <span className={`badge ${tone}`}>{children}</span>;
 }
 export function Status({ status }: { status: string }) {
+  const { t: tr } = useI18n();
   return (
     <Badge
       tone={
@@ -35,27 +29,32 @@ export function Status({ status }: { status: string }) {
             : 'neutral'
       }
     >
-      {status.replaceAll('_', ' ')}
+      {tr(status.replaceAll('_', ' '))}
     </Badge>
   );
 }
 export function ErrorNotice({ error }: { error?: string | Error | null }) {
+  const { t: tr } = useI18n();
+
   return error ? (
     <div className="error-notice" role="alert">
-      {typeof error === 'string' ? error : error.message}
+      {tr(typeof error === 'string' ? error : error.message)}
       {error instanceof ApiError && (
         <>
           {!!error.details.field_errors?.length && (
             <ul>
               {error.details.field_errors.map((field, index) => (
                 <li key={index}>
-                  {field.field || 'Request'}: {field.message}
+                  {field.field || tr('Request')}: {field.message}
                 </li>
               ))}
             </ul>
           )}
           {error.details.correlation_id && (
-            <small className="block">Support reference: {error.details.correlation_id}</small>
+            <small className="block">
+              {tr('Support reference: ')}
+              {error.details.correlation_id}
+            </small>
           )}
         </>
       )}
@@ -63,10 +62,12 @@ export function ErrorNotice({ error }: { error?: string | Error | null }) {
   ) : null;
 }
 export function Loading() {
+  const { t: tr } = useI18n();
+
   return (
     <div className="loading" role="status">
       <LoaderCircle className="spin" size={24} />
-      <span>Finding your next chapter…</span>
+      <span>{tr('Finding your next chapter…')}</span>
     </div>
   );
 }
@@ -121,12 +122,13 @@ export function SectionTitle({
   href?: string;
   label?: string;
 }) {
+  const { t: tr } = useI18n();
   return (
     <div className="section-title">
       <h2>{title}</h2>
       {href && (
         <Link href={href}>
-          {label}
+          {tr(label)}
           <ArrowRight size={16} />
         </Link>
       )}
@@ -156,6 +158,8 @@ export function Stat({
   );
 }
 export function ItemCard({ item, saved = false }: { item: Row; saved?: boolean }) {
+  const { t: tr, money } = useI18n();
+
   const { user, toast } = useSession();
   const action = useAction();
   return (
@@ -187,12 +191,14 @@ export function ItemCard({ item, saved = false }: { item: Row; saved?: boolean }
         </button>
         <span className="grade">
           <ShieldCheck size={12} />
-          VIA {item.grade}
+          {tr('VIA ')}
+          {item.grade}
         </span>
       </div>
       <div className="item-info">
         <span className="item-category">
-          {item.category} <span>·</span> {item.collection_title || 'Independent collectible'}
+          {tr(item.category)} <span>·</span>{' '}
+          {item.collection_title || tr('Independent collectible')}
         </span>
         <Link href={`/items/${item.id}`}>
           <h3>{item.title}</h3>
@@ -201,10 +207,10 @@ export function ItemCard({ item, saved = false }: { item: Row; saved?: boolean }
           <div>
             <small>
               {item.listing_status === 'active'
-                ? 'Current price'
+                ? tr('Current price')
                 : item.listing_status === 'reserved'
-                  ? 'Reserved'
-                  : 'Your collectible'}
+                  ? tr('Reserved')
+                  : tr('Your collectible')}
             </small>
             <strong>
               {item.price_cents ? money(item.price_cents) : <Status status={item.certification} />}
@@ -212,7 +218,7 @@ export function ItemCard({ item, saved = false }: { item: Row; saved?: boolean }
           </div>
           <span className="vault-caption">
             <ShieldCheck size={13} />
-            {item.custody === 'vault' ? 'In vault' : item.custody}
+            {item.custody === 'vault' ? tr('In vault') : item.custody}
           </span>
         </div>
         <ErrorNotice error={action.error} />
@@ -221,6 +227,8 @@ export function ItemCard({ item, saved = false }: { item: Row; saved?: boolean }
   );
 }
 export function CollectionCard({ collection }: { collection: Row }) {
+  const { t: tr, number } = useI18n();
+
   return (
     <Link
       href={`/collections/${collection.id}`}
@@ -238,36 +246,45 @@ export function CollectionCard({ collection }: { collection: Row }) {
       </div>
       <div>
         <small>
-          {collection.category} · {collection.edition_size} edition
+          {tr(collection.category)} · {number(collection.edition_size)}
+          {tr(' edition')}
         </small>
         <h3>
           {collection.title}
           <ArrowUpRight size={20} />
         </h3>
-        <p>By {collection.creator_name}</p>
+        <p>
+          {tr('By ')}
+          {collection.creator_name}
+        </p>
       </div>
     </Link>
   );
 }
 export function AccountGate({ children, staff = false }: { children: ReactNode; staff?: boolean }) {
+  const { t: tr } = useI18n();
+
   const { user, loading } = useSession();
   if (loading) return <Loading />;
   if (!user)
     return (
       <Empty
-        title="Your collection starts here."
-        description="Sign in to buy, publish, sell, and keep every chapter together."
+        title={tr('Your collection starts here.')}
+        description={tr('Sign in to buy, publish, sell, and keep every chapter together.')}
       >
         <Link href="/login" className="button">
-          Sign in <ArrowRight size={16} />
+          {tr('Sign in ')}
+          <ArrowRight size={16} />
         </Link>
       </Empty>
     );
   if (staff && !user.is_staff)
     return (
       <Empty
-        title="Operations access required"
-        description="This workspace is available to authorized staff. Switch accounts from your profile to use the operations demo."
+        title={tr('Operations access required')}
+        description={tr(
+          'This workspace is available to authorized staff. Switch accounts from your profile to use the operations demo.',
+        )}
       />
     );
   return <>{children}</>;
@@ -281,6 +298,8 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t: tr } = useI18n();
+
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     ref.current?.showModal();
@@ -300,7 +319,7 @@ export function Modal({
     >
       <div className="modal-head">
         <h2 id="dialog-title">{title}</h2>
-        <button className="icon-button" onClick={onClose} aria-label="Close dialog">
+        <button className="icon-button" onClick={onClose} aria-label={tr('Close dialog')}>
           <X size={20} />
         </button>
       </div>

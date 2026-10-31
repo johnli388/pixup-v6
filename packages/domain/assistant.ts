@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import { locales } from './i18n';
 
 export const assistantInput = z
   .object({
     message: z.string().trim().min(1).max(2000),
+    locale: z.enum(locales).default('en'),
     history: z
       .array(
         z

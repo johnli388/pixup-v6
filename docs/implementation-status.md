@@ -21,6 +21,8 @@ Updated October 30, 2026. This is a runnable local development pilot implementin
 
 ## Deliberate implementation differences from the plans
 
+The six-language interface increment supports English, Spanish, French, Simplified Chinese, Japanese and Korean with persistent language selection, matching server/browser locales, localized main workflows and Ask PixUP, and locale-aware USD/date/number formatting. Stored member/catalog content retains its original language; advanced operational/provider copy can fall back to English. See [internationalization coverage and maintenance](internationalization.md). No database migration or external translation service is required.
+
 - **Express replaces NestJS for the HTTP layer.** The environment's registry restrictions made NestJS unavailable, while Express was cached. Domain services and SQL transactions remain separate and reusable.
 - **One web application provides role-specific workspaces.** Staff requests enforce backend authorization, but the operations UI is not yet a separately deployed, independently authenticated application.
 - **PGlite provides the default single-process local PostgreSQL runtime.** A separate PostgreSQL adapter is also implemented. Redis, a managed queue, cloud hosting and managed database provisioning have not been introduced.

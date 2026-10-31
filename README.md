@@ -43,6 +43,8 @@ Use **Settings → Sign out / switch demo account** to change roles. These are s
 
 ## Try the complete workflows
 
+**Languages:** use **Language** in the sidebar (inside the navigation menu on mobile) to select English, Español, Français, 简体中文, 日本語 or 한국어. The choice persists across visits and also controls Ask PixUP responses and date/number formatting. Prices remain USD; member and catalog content retain their original language. See [internationalization coverage and maintenance](docs/internationalization.md).
+
 **PixUP Guide:** open **AI assistant** in the navigation or use **Ask PixUP** from any page. Search cards by title/category/budget, find public seller listings, look up buyer references from your own sales, search your orders, and ask about PixUP workflows. Local search/help works immediately. Optional AI answers require `ASSISTANT_PROVIDER=openai`, a server-only `OPENAI_API_KEY`, and a restart; users opt in in the chat. See [assistant configuration, privacy and verification](docs/assistant.md).
 
 The [current-pilot gap review](docs/planning/05-current-pilot-gap-review.md) records shared assistant budgets (migration 016), dedicated route recovery, unknown-route HTTP 404s and preview isolation checks. Hardened PostgreSQL deployments must apply migration 016 and refresh runtime grants before startup.

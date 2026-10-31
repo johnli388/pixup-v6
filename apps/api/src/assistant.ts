@@ -12,6 +12,8 @@ import {
 } from '../../../packages/domain/assistant';
 import { requireUser, type Actor } from './auth';
 import type { AssistantProvider } from './assistant-provider';
+import { assistantSearchText } from './assistant-languages';
+import { translate, type Locale } from '../../../packages/domain/i18n';
 
 const help = [
   {
@@ -107,8 +109,10 @@ const filler = new Set(
 );
 
 export function localAssistantPlan(input: AssistantInput): AssistantPlan {
-  const message = input.message.toLowerCase();
-  const previous = [...input.history].reverse().find((item) => item.role === 'user')?.content || '';
+  const message = assistantSearchText(input.message);
+  const previous = assistantSearchText(
+    [...input.history].reverse().find((item) => item.role === 'user')?.content || '',
+  );
   const context =
     /\b(those|these|cheaper|instead|only|under|below)\b/.test(message) &&
     !/\b(cards?|sellers?|buyers?|orders?)\b/.test(message)
@@ -146,7 +150,7 @@ export function localAssistantPlan(input: AssistantInput): AssistantPlan {
     intent,
     query:
       intent === 'help'
-        ? input.message.slice(0, 200)
+        ? message.slice(0, 200)
         : normalize(cleaned)
             .split(' ')
             .filter((word) => !filler.has(word))
@@ -220,8 +224,8 @@ export class AssistantService {
         }
       }
       if (['buyers', 'orders'].includes(plan.intent)) ai = false;
-      const results = await this.search(user, plan);
-      let answer = this.localAnswer(plan, results);
+      const results = await this.search(user, plan, data.locale);
+      let answer = translate(data.locale, this.localAnswer(plan, results));
       await this.assertLease(user.id, lease);
       if (ai) {
         try {
@@ -237,7 +241,12 @@ export class AssistantService {
       else if (data.use_ai && !this.provider)
         notice = 'AI is not configured. Local search and help are available.';
       await this.assertLease(user.id, lease);
-      return assistantResponse.parse({ answer, mode: ai ? 'ai' : 'local', notice, results });
+      return assistantResponse.parse({
+        answer,
+        mode: ai ? 'ai' : 'local',
+        notice: translate(data.locale, notice),
+        results,
+      });
     } finally {
       // A delayed request cannot release a newer process's lease.
       await this.db.query(
@@ -260,7 +269,11 @@ export class AssistantService {
     );
   }
 
-  private async search(actor: Actor, plan: AssistantPlan): Promise<AssistantResult[]> {
+  private async search(
+    actor: Actor,
+    plan: AssistantPlan,
+    locale: Locale,
+  ): Promise<AssistantResult[]> {
     if (plan.intent === 'help') {
       const terms = normalize(plan.query)
         .split(' ')
@@ -277,7 +290,12 @@ export class AssistantService {
         .sort((a, b) => b.score - a.score)
         .slice(0, 3);
       return (ranked.length ? ranked.map(({ item }) => item) : [help[0], help[10]]).map(
-        ({ title, description, href }) => ({ kind: 'help', title, description, href }),
+        ({ title, description, href }) => ({
+          kind: 'help',
+          title: translate(locale, title),
+          description: translate(locale, description),
+          href,
+        }),
       );
     }
     const params: unknown[] = [];
@@ -306,8 +324,9 @@ export class AssistantService {
       ).rows;
       return rows.map((row) => ({
         kind: plan.intent === 'buyers' ? 'buyer' : 'order',
-        title: plan.intent === 'buyers' ? `Buyer ${row.buyer_id}` : row.title,
-        description: `${row.title} · ${row.status.replaceAll('_', ' ')} · Order ${row.id}`,
+        title:
+          plan.intent === 'buyers' ? `${translate(locale, 'Buyer')} ${row.buyer_id}` : row.title,
+        description: `${row.title} · ${translate(locale, row.status.replaceAll('_', ' '))} · ${translate(locale, 'Order')} ${row.id}`,
         href: `/account/orders/${encodeURIComponent(row.id)}`,
         price_cents: row.total_cents,
       }));
@@ -333,8 +352,8 @@ export class AssistantService {
       title: plan.intent === 'sellers' ? row.seller_name : row.title,
       description:
         plan.intent === 'sellers'
-          ? `${row.title} · ${row.category}`
-          : `${row.category} · ${row.seller_name}${row.collection_title ? ` · ${row.collection_title}` : ''}`,
+          ? `${row.title} · ${translate(locale, row.category)}`
+          : `${translate(locale, row.category)} · ${row.seller_name}${row.collection_title ? ` · ${row.collection_title}` : ''}`,
       href: `/items/${encodeURIComponent(row.id)}`,
       price_cents: row.price_cents,
       artwork: row.artwork,

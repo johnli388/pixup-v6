@@ -1,4 +1,5 @@
 'use client';
+import { LanguageSelector, useI18n } from './i18n';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -39,6 +40,8 @@ const personal = [
   ['/account/credits', 'Credits', Wallet],
 ] as const;
 export function Shell({ children }: { children: React.ReactNode }) {
+  const { t: tr } = useI18n();
+
   const path = usePathname(),
     router = useRouter();
   const { user } = useSession();
@@ -53,20 +56,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
         className={`nav-link ${(href === '/' ? path === href : path.startsWith(href)) ? 'active' : ''}`}
       >
         <Icon size={19} />
-        <span>{label}</span>
-        {href === '/marketplace' && <span className="nav-new">NEW</span>}
+        <span>{tr(label)}</span>
+        {href === '/marketplace' && <span className="nav-new">{tr('NEW')}</span>}
       </Link>
     ));
   return (
     <>
       <a className="skip-link" href="#main-content">
-        Skip to content
+        {tr('Skip to content')}
       </a>
       {open && (
         <button
           className="sidebar-scrim"
           onClick={() => setOpen(false)}
-          aria-label="Close navigation"
+          aria-label={tr('Close navigation')}
         />
       )}
       <aside className={`sidebar ${open ? 'open' : ''}`}>
@@ -77,16 +80,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <i />
             <i />
           </span>
-          PixUP<span className="brand-dot">®</span>
+          {tr('PixUP')}
+          <span className="brand-dot">®</span>
         </Link>
         <div className="sidebar-inner">
-          <span className="nav-label">EXPLORE</span>
-          <nav aria-label="Explore">{nav(main)}</nav>
-          <span className="nav-label">YOUR SPACE</span>
-          <nav aria-label="Your space">{nav(personal)}</nav>
+          <span className="nav-label">{tr('EXPLORE')}</span>
+          <nav aria-label={tr('Explore')}>{nav(main)}</nav>
+          <span className="nav-label">{tr('YOUR SPACE')}</span>
+          <nav aria-label={tr('Your space')}>{nav(personal)}</nav>
           <div className="nav-divider" />
-          <span className="nav-label">WORKSPACE</span>
-          <nav aria-label="Workspaces">
+          <span className="nav-label">{tr('WORKSPACE')}</span>
+          <nav aria-label={tr('Workspaces')}>
             {nav([
               ['/workspace/seller', 'Seller studio', Store],
               ['/workspace/creator', 'Creator studio', Palette],
@@ -98,26 +102,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="creator-promo">
             <span className="mini-spark">✳</span>
             <strong>
-              Your creativity.
+              {tr('Your creativity.')}
               <br />
-              Their next favorite.
+              {tr('Their next favorite.')}
             </strong>
-            <p>Give your collection a home.</p>
+            <p>{tr('Give your collection a home.')}</p>
             <Link href="/workspace/creator">
-              Meet creator studio <ArrowUpRight size={14} />
+              {tr('Meet creator studio ')}
+              <ArrowUpRight size={14} />
             </Link>
           </div>
           <div className="sidebar-bottom">
+            <LanguageSelector />
             <Link href="/account/support">
               <LifeBuoy size={17} />
-              Help & support
+              {tr('Help & support')}
             </Link>
             <Link href="/account/settings">
               <Settings size={17} />
-              Settings
+              {tr('Settings')}
             </Link>
             <span className="demo-pill">
-              <i /> Interactive demo · No real money
+              <i />
+              {tr(' Interactive demo · No real money')}
             </span>
           </div>
         </div>
@@ -127,18 +134,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <button
             className="icon-button mobile-menu"
             onClick={() => setOpen(true)}
-            aria-label="Open navigation"
+            aria-label={tr('Open navigation')}
           >
             <Menu size={22} />
           </button>
           <div className="top-context">
-            The home of your next find<span> / </span>
+            {tr('The home of your next find')}
+            <span> / </span>
             <b>
               {path.startsWith('/workspace')
-                ? 'Workspace'
+                ? tr('Workspace')
                 : path.startsWith('/ops')
-                  ? 'Operations'
-                  : 'Explore'}
+                  ? tr('Operations')
+                  : tr('Explore')}
             </b>
           </div>
           <div className="top-actions">
@@ -151,8 +159,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <Search size={17} />
               <input
-                aria-label="Search collectibles"
-                placeholder="Search collectibles…"
+                aria-label={tr('Search collectibles')}
+                placeholder={tr('Search collectibles…')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -161,7 +169,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link
               href="/account/activity"
               className="notification-button"
-              aria-label="Activity and notifications"
+              aria-label={tr('Activity and notifications')}
             >
               <Bell size={19} />
               <i />
@@ -179,7 +187,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </Link>
             ) : (
               <Link className="sign-in" href="/login">
-                Sign in <ArrowUpRight size={15} />
+                {tr('Sign in ')}
+                <ArrowUpRight size={15} />
               </Link>
             )}
           </div>
@@ -188,17 +197,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <footer>
-          <span>© {new Date().getFullYear()} PixUP. Culture circulates.</span>
-          <span>Original demo artwork · Simulated transactions</span>
+          <span>
+            © {new Date().getFullYear()}
+            {tr(' PixUP. Culture circulates.')}
+          </span>
+          <span>{tr('Original demo artwork · Simulated transactions')}</span>
           <Link href="/account/support">
-            Support <ArrowUpRight size={13} />
+            {tr('Support ')}
+            <ArrowUpRight size={13} />
           </Link>
         </footer>
       </div>
       {path !== '/assistant' && (
-        <nav aria-label="Assistant shortcut">
+        <nav aria-label={tr('Assistant shortcut')}>
           <Link className="assistant-launcher" href="/assistant">
-            <Bot size={20} /> Ask PixUP
+            <Bot size={20} />
+            {tr(' Ask PixUP')}
           </Link>
         </nav>
       )}

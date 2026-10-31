@@ -1,10 +1,13 @@
 'use client';
+import { useI18n } from './i18n';
 import type { PaymentStatus, RefundStatus } from '../../../packages/domain/contracts';
 import { useEffect, useState } from 'react';
 import { useSession, useAction, type Row } from './providers';
 import { ErrorNotice } from './ui';
 
 export function StripePayment({ order }: { order: Row }) {
+  const { t: tr, money } = useI18n();
+
   const { request, refresh } = useSession();
   const action = useAction();
   const [status, setStatus] = useState(''),
@@ -47,18 +50,23 @@ export function StripePayment({ order }: { order: Row }) {
   return (
     <div className="form-panel">
       <div className="notice subtle">
-        <strong>Stripe test payment</strong>
+        <strong>{tr('Stripe test payment')}</strong>
         <p>
-          Payment details are collected securely on Stripe. Use test payment details only; no real
-          money moves.
+          {tr(
+            'Payment details are collected securely on Stripe. Use test payment details only; no real money moves.',
+          )}
         </p>
       </div>
       {order.status === 'pending_payment' && (
         <>
           <p role="status">
             {status === 'requires_review'
-              ? 'This payment needs reconciliation. Your item remains reserved; contact support.'
-              : 'Waiting for Stripe confirmation. Returning from checkout alone does not confirm payment.'}
+              ? tr(
+                  'This payment needs reconciliation. Your item remains reserved; contact support.',
+                )
+              : tr(
+                  'Waiting for Stripe confirmation. Returning from checkout alone does not confirm payment.',
+                )}
           </p>
           <ErrorNotice error={error || action.error} />
           <div className="button-row">
@@ -67,7 +75,7 @@ export function StripePayment({ order }: { order: Row }) {
               disabled={action.busy || status === 'requires_review' || !!refund}
               onClick={() => void resume()}
             >
-              Continue to Stripe Checkout
+              {tr('Continue to Stripe Checkout')}
             </button>
             <button
               className="button secondary"
@@ -80,32 +88,33 @@ export function StripePayment({ order }: { order: Row }) {
                 )
               }
             >
-              Cancel payment
+              {tr('Cancel payment')}
             </button>
           </div>
           <small>
-            Cancellation releases inventory only after Stripe confirms the session expired. If
-            payment already succeeded, the order is confirmed instead.
+            {tr(
+              'Cancellation releases inventory only after Stripe confirms the session expired. If payment already succeeded, the order is confirmed instead.',
+            )}
           </small>
         </>
       )}
       {['paid', 'fulfilled'].includes(order.status) && (
         <p>
-          Stripe confirmed this test payment. Contact support to request an eligible full vault
-          refund. Finance confirms the provider outcome before restoring credits or ownership.
-          Seller payouts remain unavailable.
+          {tr(
+            'Stripe confirmed this test payment. Contact support to request an eligible full vault refund. Finance confirms the provider outcome before restoring credits or ownership. Seller payouts remain unavailable.',
+          )}
         </p>
       )}
       {refund && (
         <p role="status">
-          <strong>Refund: {refund.status.replaceAll('_', ' ')}</strong> ·{' '}
-          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-            refund.amount_cents / 100,
-          )}{' '}
-          test cash.
+          <strong>
+            {tr('Refund: ')}
+            {refund.status.replaceAll('_', ' ')}
+          </strong>{' '}
+          · {money(refund.amount_cents)} {tr('test cash.')}
           {refund.status === 'succeeded'
-            ? ' Original credits have been restored.'
-            : ' Keep this order reference for support. No additional payment is needed.'}
+            ? tr(' Original credits have been restored.')
+            : tr(' Keep this order reference for support. No additional payment is needed.')}
         </p>
       )}
     </div>

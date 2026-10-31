@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import { SecuritySettings, IdentityAction } from './identity-access';
 import { AccountGate } from './ui';
 import { useSession } from './providers';
@@ -12,6 +13,8 @@ import { Operations } from './operations';
 import { Channels, ChannelWorkspace, DeveloperTools } from './channels';
 import { Loading, ErrorNotice, Empty } from './ui';
 export function Application({ initialCatalog }: { initialCatalog?: Row }) {
+  const { t: tr } = useI18n();
+
   const path = usePathname(),
     search = useSearchParams();
   const {
@@ -52,7 +55,7 @@ export function Application({ initialCatalog }: { initialCatalog?: Row }) {
       <>
         <ErrorNotice error={error || 'The catalog is unavailable.'} />
         <button className="button secondary" onClick={() => void refetch()}>
-          Try again
+          {tr('Try again')}
         </button>
       </>
     );
@@ -61,11 +64,11 @@ export function Application({ initialCatalog }: { initialCatalog?: Row }) {
   if (parts[0] === 'collections') return <Collections catalog={catalog} id={parts[1]} />;
   return (
     <Empty
-      title="This page wandered off."
-      description="There’s still a whole world worth collecting."
+      title={tr('This page wandered off.')}
+      description={tr('There’s still a whole world worth collecting.')}
     >
       <Link className="button" href="/">
-        Back to discover
+        {tr('Back to discover')}
       </Link>
     </Empty>
   );

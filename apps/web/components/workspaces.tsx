@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import { AttributionReport } from './price-trust';
 import { OrganizationInventory } from './saas-inventory';
 import type { RePoolOffer as Offer, RePoolTerms } from '../../../packages/domain/contracts';
@@ -31,8 +32,6 @@ import {
   ErrorNotice,
   AccountGate,
   Modal,
-  money,
-  date,
 } from './ui';
 
 const categories = ['Sports', 'K-pop', 'Art', 'Gaming'];
@@ -55,6 +54,8 @@ function ArtworkPicker({
   onChange: (value: string) => void;
   onBusyChange: (busy: boolean) => void;
 }) {
+  const { t: tr } = useI18n();
+
   const { user } = useSession();
   const { data: uploads, refetch: refreshUploads } = useData('/evidence');
   const [pending, setPending] = useState('');
@@ -92,7 +93,7 @@ function ArtworkPicker({
   }
   return (
     <fieldset className="artwork-field">
-      <legend>Collection artwork</legend>
+      <legend>{tr('Collection artwork')}</legend>
       <div className="artwork-picker">
         {artOptions.map(([v, label]) => (
           <button
@@ -114,7 +115,7 @@ function ArtworkPicker({
         ))}
       </div>
       <label className="field upload-field">
-        {busy ? 'Processing your image…' : 'Or upload your own artwork'}
+        {busy ? tr('Processing your image…') : tr('Or upload your own artwork')}
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp"
@@ -125,20 +126,20 @@ function ArtworkPicker({
       {value.startsWith('media:') && (
         <div className="uploaded-preview">
           <CardArt variant={value} />
-          <span>Artwork saved privately. Public only after publishing.</span>
+          <span>{tr('Artwork saved privately. Public only after publishing.')}</span>
         </div>
       )}
       <ErrorNotice error={error} />
       {pending && <p role="status">{pending}</p>}
       {!!uploads?.files.some((f: Row) => f.purpose === 'artwork' && f.state === 'approved') && (
         <label className="field">
-          Use approved artwork
+          {tr('Use approved artwork')}
           <select
             value={value.startsWith('media:') ? value : ''}
             onChange={(e) => onChange(e.target.value)}
           >
             <option value="" disabled>
-              Select approved upload
+              {tr('Select approved upload')}
             </option>
             {uploads.files
               .filter(
@@ -159,12 +160,13 @@ function ArtworkPicker({
           className="button small secondary"
           onClick={() => void refreshUploads()}
         >
-          Refresh approved artwork
+          {tr('Refresh approved artwork')}
         </button>
       )}
       <small>
-        PNG, JPEG or WebP · Up to 6 MB / 24 MP. Images are decoded, resized, and metadata is
-        removed.
+        {tr(
+          'PNG, JPEG or WebP · Up to 6 MB / 24 MP. Images are decoded, resized, and metadata is removed.',
+        )}
       </small>
     </fieldset>
   );
@@ -178,6 +180,8 @@ export function Seller() {
   );
 }
 function SellerInner() {
+  const { t: tr, money, date } = useI18n();
+
   const { data, error, isPending } = useData('/portfolio');
   const { data: settlements } = useData('/settlements');
   const [tab, setTab] = useState('Inventory'),
@@ -191,32 +195,32 @@ function SellerInner() {
   return (
     <>
       <PageTitle
-        eyebrow="SELLER STUDIO"
-        title="Good finds deserve a next chapter."
-        description="Your inventory, listings, and sale proceeds. Everything in its place."
+        eyebrow={tr('SELLER STUDIO')}
+        title={tr('Good finds deserve a next chapter.')}
+        description={tr('Your inventory, listings, and sale proceeds. Everything in its place.')}
       >
         <button className="button" onClick={() => setModal({ type: 'add' })}>
           <Plus size={17} />
-          Add collectible
+          {tr('Add collectible')}
         </button>
       </PageTitle>
       <div className="stats-grid">
         <Stat
-          label="Total inventory"
+          label={tr('Total inventory')}
           value={data.items.length}
-          note="Collectibles currently owned"
+          note={tr('Collectibles currently owned')}
           icon={<Layers size={18} />}
         />
         <Stat
-          label="Active listings"
+          label={tr('Active listings')}
           value={data.items.filter((a: Row) => a.listing_status === 'active').length}
-          note="Available in the marketplace"
+          note={tr('Available in the marketplace')}
           icon={<Store size={18} />}
         />
         <Stat
-          label="Held seller proceeds"
+          label={tr('Held seller proceeds')}
           value={money(held)}
-          note="Demo USD · separate from credits"
+          note={tr('Demo USD · separate from credits')}
           icon={<Wallet size={18} />}
         />
       </div>
@@ -224,7 +228,7 @@ function SellerInner() {
       <div className="tabs spaced">
         {['Inventory', 'Intakes', 'Settlements'].map((t) => (
           <button key={t} className={tab === t ? 'selected' : ''} onClick={() => setTab(t)}>
-            {t}
+            {tr(t)}
             {t === 'Intakes' && <span>{data.intakes.length}</span>}
           </button>
         ))}
@@ -236,11 +240,11 @@ function SellerInner() {
             <table>
               <thead>
                 <tr>
-                  <th>Collectible</th>
-                  <th>Authentication</th>
-                  <th>Custody</th>
-                  <th>Listing</th>
-                  <th>Next chapter</th>
+                  <th>{tr('Collectible')}</th>
+                  <th>{tr('Authentication')}</th>
+                  <th>{tr('Custody')}</th>
+                  <th>{tr('Listing')}</th>
+                  <th>{tr('Next chapter')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -262,7 +266,10 @@ function SellerInner() {
                       </td>
                       <td>
                         <Status status={a.certification} />
-                        <small className="block muted">Grade {a.grade}</small>
+                        <small className="block muted">
+                          {tr('Grade ')}
+                          {a.grade}
+                        </small>
                       </td>
                       <td>
                         <Status status={a.custody} />
@@ -274,7 +281,7 @@ function SellerInner() {
                             <small className="block muted">{a.listing_status}</small>
                           </>
                         ) : (
-                          <span className="muted">Not listed</span>
+                          <span className="muted">{tr('Not listed')}</span>
                         )}
                       </td>
                       <td>
@@ -291,19 +298,19 @@ function SellerInner() {
                                 )
                               }
                             >
-                              Withdraw listing
+                              {tr('Withdraw listing')}
                             </button>
                           ) : a.listing_status === 'reserved' ? (
-                            <Badge>Checkout in progress</Badge>
+                            <Badge>{tr('Checkout in progress')}</Badge>
                           ) : pending ? (
-                            <Badge>Intake in progress</Badge>
+                            <Badge>{tr('Intake in progress')}</Badge>
                           ) : a.custody === 'vault' && a.certification === 'verified' ? (
                             <>
                               <button
                                 className="button small"
                                 onClick={() => setModal({ type: 'list', item: a })}
                               >
-                                List for sale
+                                {tr('List for sale')}
                               </button>
                               <button
                                 className="icon-button"
@@ -318,7 +325,7 @@ function SellerInner() {
                               className="button small secondary"
                               onClick={() => setModal({ type: 'vault', item: a })}
                             >
-                              Request vault intake
+                              {tr('Request vault intake')}
                             </button>
                           )}
                         </div>
@@ -331,11 +338,13 @@ function SellerInner() {
           </div>
         ) : (
           <Empty
-            title="Give your collection a little room."
-            description="Add a collectible, then request authentication and vault custody before listing it."
+            title={tr('Give your collection a little room.')}
+            description={tr(
+              'Add a collectible, then request authentication and vault custody before listing it.',
+            )}
           >
             <button className="button" onClick={() => setModal({ type: 'add' })}>
-              Add your first collectible
+              {tr('Add your first collectible')}
             </button>
           </Empty>
         )
@@ -345,11 +354,11 @@ function SellerInner() {
             <table>
               <thead>
                 <tr>
-                  <th>Collectible</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Provisional offer</th>
-                  <th>Review notes</th>
+                  <th>{tr('Collectible')}</th>
+                  <th>{tr('Type')}</th>
+                  <th>{tr('Status')}</th>
+                  <th>{tr('Provisional offer')}</th>
+                  <th>{tr('Review notes')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -359,23 +368,24 @@ function SellerInner() {
                       <strong>{i.title}</strong>
                       <small className="block muted">{date(i.created_at)}</small>
                     </td>
-                    <td>{i.kind === 'repool' ? 'RePool buyback' : 'Vault intake'}</td>
+                    <td>{i.kind === 'repool' ? tr('RePool buyback') : tr('Vault intake')}</td>
                     <td>
                       <Status status={i.status} />
                     </td>
                     <td>{i.offered_credits ? `${i.offered_credits} credits` : '—'}</td>
                     <td>
-                      {i.review_note || 'Awaiting receipt and inspection.'}
+                      {i.review_note || tr('Awaiting receipt and inspection.')}
                       {i.kind === 'repool' && (
                         <>
                           <small className="block muted">
-                            Offer v{i.offer_version} · {i.offer_status.replaceAll('_', ' ')}
+                            {tr('Offer v')}
+                            {i.offer_version} · {i.offer_status.replaceAll('_', ' ')}
                           </small>
                           <button
                             className="button small secondary"
                             onClick={() => setModal({ type: 'offer', item: i })}
                           >
-                            Review offer
+                            {tr('Review offer')}
                           </button>
                         </>
                       )}
@@ -387,8 +397,10 @@ function SellerInner() {
           </div>
         ) : (
           <Empty
-            title="Nothing in transit."
-            description="Your authentication, vault, and recirculation requests will appear here."
+            title={tr('Nothing in transit.')}
+            description={tr(
+              'Your authentication, vault, and recirculation requests will appear here.',
+            )}
           />
         )
       ) : (
@@ -397,10 +409,11 @@ function SellerInner() {
       <div className="notice subtle">
         <ShieldCheck size={19} />
         <div>
-          <strong>Trust before trade.</strong>
+          <strong>{tr('Trust before trade.')}</strong>
           <p>
-            Collectibles need VIA review and vault custody before they can be sold. Seller proceeds
-            are separate from nonwithdrawable ecosystem credits.
+            {tr(
+              'Collectibles need VIA review and vault custody before they can be sold. Seller proceeds are separate from nonwithdrawable ecosystem credits.',
+            )}
           </p>
         </div>
       </div>
@@ -414,6 +427,8 @@ function SellerInner() {
   );
 }
 function RePoolOffer({ intake, onClose }: { intake: Row; onClose: () => void }) {
+  const { t: tr, date } = useI18n();
+
   const { data, error, refetch } = useData<Offer>(`/repool/intakes/${intake.id}/offer`);
   const action = useAction();
   const [acceptedVersion, setAcceptedVersion] = useState<number | null>(null);
@@ -434,7 +449,7 @@ function RePoolOffer({ intake, onClose }: { intake: Row; onClose: () => void }) 
     }
   }
   return (
-    <Modal title="Review RePool offer" onClose={onClose}>
+    <Modal title={tr('Review RePool offer')} onClose={onClose}>
       {error ? (
         <ErrorNotice error={error} />
       ) : !data ? (
@@ -443,16 +458,22 @@ function RePoolOffer({ intake, onClose }: { intake: Row; onClose: () => void }) 
         <div className="form-panel">
           <h3>{intake.title}</h3>
           <p>
-            Previously accepted: {previous?.credit_units ?? '—'} credits (v
+            {tr('Previously accepted: ')}
+            {previous?.credit_units ?? '—'}
+            {tr(' credits (v')}
             {data.accepted_offer_version ?? '—'}).
           </p>
           <div className="offer-panel">
-            <small>CURRENT DEMO OFFER · v{data.offer_version}</small>
+            <small>
+              {tr('CURRENT DEMO OFFER · v')}
+              {data.offer_version}
+            </small>
             <strong>
-              {data.offered_credits} <span>credits</span>
+              {data.offered_credits} <span>{tr('credits')}</span>
             </strong>
             <p>
-              Expires {date(data.offer_expires_at)} · {data.terms.policy_version}
+              {tr('Expires ')}
+              {date(data.offer_expires_at)} · {data.terms.policy_version}
             </p>
           </div>
           <p>
@@ -462,10 +483,12 @@ function RePoolOffer({ intake, onClose }: { intake: Row; onClose: () => void }) 
           <Status status={data.offer_status} />
           <p>
             {data.status === 'accepted'
-              ? 'Admission complete: title transferred and credits issued.'
+              ? tr('Admission complete: title transferred and credits issued.')
               : data.offer_status === 'declined'
-                ? 'No credits or title transfer. Contact support to arrange return; the item stays in custody until Operations records it.'
-                : 'You retain ownership. Credits are not spendable until final admission.'}
+                ? tr(
+                    'No credits or title transfer. Contact support to arrange return; the item stays in custody until Operations records it.',
+                  )
+                : tr('You retain ownership. Credits are not spendable until final admission.')}
           </p>
           {data.offer_status === 'awaiting_consent' && data.status === 'received' && (
             <>
@@ -476,7 +499,9 @@ function RePoolOffer({ intake, onClose }: { intake: Row; onClose: () => void }) 
                   onChange={(e) => setAcceptedVersion(e.target.checked ? data.offer_version : null)}
                 />
                 <span>
-                  I accept this version, credit amount, title transfer and redemption restrictions.
+                  {tr(
+                    'I accept this version, credit amount, title transfer and redemption restrictions.',
+                  )}
                 </span>
               </label>
               <div className="button-row">
@@ -489,42 +514,46 @@ function RePoolOffer({ intake, onClose }: { intake: Row; onClose: () => void }) 
                   }
                   onClick={() => void decide(true)}
                 >
-                  Accept revised offer
+                  {tr('Accept revised offer')}
                 </button>
                 <button
                   className="button secondary"
                   disabled={action.busy}
                   onClick={() => void decide(false)}
                 >
-                  Decline & request return
+                  {tr('Decline & request return')}
                 </button>
               </div>
             </>
           )}
           <ErrorNotice error={action.error} />
-          <h3>Offer history</h3>
+          <h3>{tr('Offer history')}</h3>
           {data.versions.map((v: Row) => (
             <p key={v.version}>
-              v{v.version} · {v.credit_units} credits · {v.note}
+              v{v.version} · {v.credit_units}
+              {tr(' credits · ')}
+              {v.note}
             </p>
           ))}
-          <Link href="/account/support">Contact support</Link>
+          <Link href="/account/support">{tr('Contact support')}</Link>
         </div>
       )}
     </Modal>
   );
 }
 function SettlementTable({ settlements }: { settlements: Row[] }) {
+  const { t: tr, date, money } = useI18n();
+
   return settlements.length ? (
     <div className="panel table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Collectible</th>
-            <th>Order payment</th>
-            <th>Platform fee</th>
-            <th>Seller proceeds</th>
-            <th>Status</th>
+            <th>{tr('Collectible')}</th>
+            <th>{tr('Order payment')}</th>
+            <th>{tr('Platform fee')}</th>
+            <th>{tr('Seller proceeds')}</th>
+            <th>{tr('Status')}</th>
           </tr>
         </thead>
         <tbody>
@@ -549,17 +578,19 @@ function SettlementTable({ settlements }: { settlements: Row[] }) {
         </tbody>
       </table>
       <p className="table-note">
-        All payouts are simulated. “Released” does not mean a real bank transfer occurred.
+        {tr('All payouts are simulated. “Released” does not mean a real bank transfer occurred.')}
       </p>
     </div>
   ) : (
     <Empty
-      title="Your first sale starts a story."
-      description="When a collectible sells, its fees and proceeds will be recorded here."
+      title={tr('Your first sale starts a story.')}
+      description={tr('When a collectible sells, its fees and proceeds will be recorded here.')}
     />
   );
 }
 function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClose: () => void }) {
+  const { t: tr, money } = useI18n();
+
   const { data: terms, error: termsError } = useData<RePoolTerms>(
     '/repool/terms',
     type === 'repool',
@@ -601,12 +632,12 @@ function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClos
     <Modal
       title={
         type === 'add'
-          ? 'Add a collectible'
+          ? tr('Add a collectible')
           : type === 'list'
-            ? 'Give it a next chapter'
+            ? tr('Give it a next chapter')
             : type === 'repool'
-              ? 'Recirculate with RePool'
-              : 'Request vault intake'
+              ? tr('Recirculate with RePool')
+              : tr('Request vault intake')
       }
       onClose={onClose}
     >
@@ -614,33 +645,35 @@ function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClos
         {type === 'add' ? (
           <>
             <label className="field">
-              Collectible name
+              {tr('Collectible name')}
               <input
                 required
                 minLength={3}
                 maxLength={120}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="A name that makes it easy to find"
+                placeholder={tr('A name that makes it easy to find')}
               />
             </label>
             <label className="field">
-              Category
+              {tr('Category')}
               <select value={category} onChange={(e) => setCategory(e.target.value)}>
                 {categories.map((c) => (
-                  <option key={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {tr(c)}
+                  </option>
                 ))}
               </select>
             </label>
             <label className="field">
-              Description & condition
+              {tr('Description & condition')}
               <textarea
                 required
                 minLength={10}
                 maxLength={2000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Edition, condition, and anything worth knowing."
+                placeholder={tr('Edition, condition, and anything worth knowing.')}
               />
             </label>
             <ArtworkPicker value={artwork} onChange={setArtwork} onBusyChange={setUploadBusy} />
@@ -657,7 +690,7 @@ function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClos
             {type === 'list' ? (
               <>
                 <label className="field">
-                  Your asking price (USD)
+                  {tr('Your asking price (USD)')}
                   <input
                     required
                     type="number"
@@ -670,44 +703,46 @@ function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClos
                 </label>
                 <dl className="spec-list">
                   <div>
-                    <dt>Demo platform fee · 5%</dt>
+                    <dt>{tr('Demo platform fee · 5%')}</dt>
                     <dd>{money(Math.round(Number(price) * 5))}</dd>
                   </div>
                   <div>
-                    <dt>Expected seller proceeds</dt>
+                    <dt>{tr('Expected seller proceeds')}</dt>
                     <dd>
                       {money(Math.round(Number(price) * 100) - Math.round(Number(price) * 5))}
                     </dd>
                   </div>
                 </dl>
                 <p className="muted">
-                  Settlement is held after the sale and reviewed separately. No automatic creator
-                  royalty is deducted.
+                  {tr(
+                    'Settlement is held after the sale and reviewed separately. No automatic creator royalty is deducted.',
+                  )}
                 </p>
               </>
             ) : (
               <>
                 {type === 'repool' && (
                   <div className="offer-panel">
-                    <small>PROVISIONAL DEMO OFFER</small>
+                    <small>{tr('PROVISIONAL DEMO OFFER')}</small>
                     <strong>
-                      {terms?.initial_credit_units ?? '…'} <span>credits</span>
+                      {terms?.initial_credit_units ?? '…'} <span>{tr('credits')}</span>
                     </strong>
                     <p>
-                      A fixed demo offer, not a market valuation. Credits are granted only after
-                      receipt and acceptance.
+                      {tr(
+                        'A fixed demo offer, not a market valuation. Credits are granted only after receipt and acceptance.',
+                      )}
                     </p>
                   </div>
                 )}
                 <label className="field">
-                  Intake evidence & notes
+                  {tr('Intake evidence & notes')}
                   <textarea
                     required
                     minLength={10}
                     maxLength={2000}
                     value={evidence}
                     onChange={(e) => setEvidence(e.target.value)}
-                    placeholder="Describe identifying details, condition, and packaging."
+                    placeholder={tr('Describe identifying details, condition, and packaging.')}
                   />
                 </label>
                 <label className="checkbox terms">
@@ -720,7 +755,9 @@ function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClos
                   <span>
                     {type === 'repool'
                       ? `I accept the provisional ${terms?.initial_credit_units ?? '…'}-credit demo offer (${terms?.policy_version ?? 'loading'}). ${terms?.title_effect ?? ''} ${terms?.redemption_scope ?? ''}`
-                      : 'I authorize receipt and inspection in the demo vault. Ownership remains mine. No real shipping label is generated.'}
+                      : tr(
+                          'I authorize receipt and inspection in the demo vault. Ownership remains mine. No real shipping label is generated.',
+                        )}
                   </span>
                 </label>
               </>
@@ -734,12 +771,12 @@ function SellerModal({ type, item, onClose }: { type: string; item?: Row; onClos
           disabled={action.busy || uploadBusy || (type === 'repool' && !terms)}
         >
           {action.busy
-            ? 'Saving…'
+            ? tr('Saving…')
             : type === 'add'
-              ? 'Add collectible'
+              ? tr('Add collectible')
               : type === 'list'
-                ? 'Publish listing'
-                : 'Request intake'}
+                ? tr('Publish listing')
+                : tr('Request intake')}
           <ArrowRight size={17} />
         </button>
       </form>
@@ -755,6 +792,8 @@ export function Creator() {
   );
 }
 function CreatorInner() {
+  const { t: tr } = useI18n();
+
   const { user, clearPrivateData } = useSession();
   const organizations = user!.organizations.filter((o) => ['creator', 'platform'].includes(o.kind));
   const [chosen, setChosen] = useState('');
@@ -768,24 +807,27 @@ function CreatorInner() {
     return (
       <>
         <PageTitle
-          eyebrow="CREATOR STUDIO"
-          title="Your ideas deserve a first edition."
-          description="A shared home for your collections, your community, and your next big idea."
+          eyebrow={tr('CREATOR STUDIO')}
+          title={tr('Your ideas deserve a first edition.')}
+          description={tr(
+            'A shared home for your collections, your community, and your next big idea.',
+          )}
         />
         <div className="creator-invite">
           <span className="mini-spark">✳</span>
-          <h2>Good things begin with an invitation.</h2>
+          <h2>{tr('Good things begin with an invitation.')}</h2>
           <p>
-            Creator publishing is currently open to invited studios. Use the Creator demo account to
-            try the full publishing and review workflow, or open a support case to request access.
+            {tr(
+              'Creator publishing is currently open to invited studios. Use the Creator demo account to try the full publishing and review workflow, or open a support case to request access.',
+            )}
           </p>
           <div className="button-row">
             <Link href="/account/settings" className="button">
-              Switch to creator demo
+              {tr('Switch to creator demo')}
               <ArrowRight size={16} />
             </Link>
             <Link href="/account/support" className="button secondary">
-              Request access
+              {tr('Request access')}
             </Link>
           </div>
         </div>
@@ -796,17 +838,17 @@ function CreatorInner() {
   return (
     <>
       <PageTitle
-        eyebrow="CREATOR STUDIO"
-        title="Make something worth collecting."
-        description="From an idea to a first edition. Your creative world starts here."
+        eyebrow={tr('CREATOR STUDIO')}
+        title={tr('Make something worth collecting.')}
+        description={tr('From an idea to a first edition. Your creative world starts here.')}
       >
         <button disabled={!canPublish} className="button" onClick={() => setModal({ type: 'new' })}>
           <Plus size={17} />
-          New collection
+          {tr('New collection')}
         </button>
       </PageTitle>
       <label className="workspace-select">
-        Publishing workspace
+        {tr('Publishing workspace')}
         <select
           value={org}
           onChange={async (e) => {
@@ -825,30 +867,30 @@ function CreatorInner() {
       </label>
       <div className="stats-grid">
         <Stat
-          label="Your collections"
+          label={tr('Your collections')}
           value={data.collections.length}
-          note="Original editions, together"
+          note={tr('Original editions, together')}
           icon={<Palette size={18} />}
         />
         <Stat
-          label="Published"
+          label={tr('Published')}
           value={data.collections.filter((c: Row) => c.status === 'published').length}
-          note="Live in the PixUP catalog"
+          note={tr('Live in the PixUP catalog')}
           icon={<Layers size={18} />}
         />
         <Stat
-          label="Recorded circulation"
+          label={tr('Recorded circulation')}
           value={data.sales.filter((o: Row) => ['paid', 'fulfilled'].includes(o.status)).length}
-          note="Attribution records · not guaranteed earnings"
+          note={tr('Attribution records · not guaranteed earnings')}
           icon={<Repeat2 size={18} />}
         />
       </div>
       {!canPublish && (
         <p className="notice">
-          Viewer access: you can read collections. An owner or publisher must make changes.
+          {tr('Viewer access: you can read collections. An owner or publisher must make changes.')}
         </p>
       )}
-      <SectionTitle title="Your collections" />
+      <SectionTitle title={tr('Your collections')} />
       <AttributionReport data={data.attribution} />
       <ErrorNotice error={action.error} />
       {data.collections.length ? (
@@ -861,7 +903,8 @@ function CreatorInner() {
               <div className="creator-collection-body">
                 <div className="section-title">
                   <span className="eyebrow">
-                    {c.category} · {c.stock_count}/{c.edition_size} RECEIVED
+                    {c.category} · {c.stock_count}/{c.edition_size}
+                    {tr(' RECEIVED')}
                   </span>
                   <Status status={c.status} />
                 </div>
@@ -891,7 +934,7 @@ function CreatorInner() {
                 </div>
                 {c.review_note && (
                   <div className="review-note">
-                    <strong>Review note:</strong> {c.review_note}
+                    <strong>{tr('Review note:')}</strong> {c.review_note}
                   </div>
                 )}
                 <div className="button-row">
@@ -901,7 +944,7 @@ function CreatorInner() {
                         className="button small secondary"
                         onClick={() => setModal({ type: 'edit', collection: c })}
                       >
-                        Edit draft
+                        {tr('Edit draft')}
                       </button>
                       <button
                         className="button small"
@@ -915,16 +958,16 @@ function CreatorInner() {
                         }
                       >
                         <Send size={14} />
-                        Submit for review
+                        {tr('Submit for review')}
                       </button>
                     </>
                   )}
                   {c.status === 'submitted' && (
-                    <span className="muted">Your collection is with the review team.</span>
+                    <span className="muted">{tr('Your collection is with the review team.')}</span>
                   )}
                   {c.status === 'approved' && (
                     <span className="muted">
-                      Approved. Operations must receive and assess stock before publishing.
+                      {tr('Approved. Operations must receive and assess stock before publishing.')}
                     </span>
                   )}
                   {canPublish && c.status === 'stock_ready' && (
@@ -932,13 +975,13 @@ function CreatorInner() {
                       className="button small"
                       onClick={() => setModal({ type: 'publish', collection: c })}
                     >
-                      Set price & publish
+                      {tr('Set price & publish')}
                       <ArrowUpRight size={14} />
                     </button>
                   )}
                   {c.status === 'published' && (
                     <Link href={`/collections/${c.id}`} className="button small secondary">
-                      View collection
+                      {tr('View collection')}
                       <ArrowUpRight size={14} />
                     </Link>
                   )}
@@ -949,25 +992,27 @@ function CreatorInner() {
         </div>
       ) : (
         <Empty
-          title="The first edition is yours to imagine."
-          description="Create a collection, provide your rights evidence, and submit it for review."
+          title={tr('The first edition is yours to imagine.')}
+          description={tr(
+            'Create a collection, provide your rights evidence, and submit it for review.',
+          )}
         >
           <button
             disabled={!canPublish}
             className="button"
             onClick={() => setModal({ type: 'new' })}
           >
-            Create your first collection
+            {tr('Create your first collection')}
           </button>
         </Empty>
       )}
       <div className="notice subtle">
         <ShieldCheck size={22} />
         <div>
-          <strong>Credit where it belongs.</strong>
+          <strong>{tr('Credit where it belongs.')}</strong>
           <p>
-            {data.attribution_note} Revenue from your own inventory sales is reported in Seller
-            Studio.
+            {data.attribution_note}
+            {tr(' Revenue from your own inventory sales is reported in Seller Studio.')}
           </p>
         </div>
       </div>
@@ -993,6 +1038,8 @@ function CreatorModal({
   org: string;
   onClose: () => void;
 }) {
+  const { t: tr } = useI18n();
+
   const [uploadBusy, setUploadBusy] = useState(false);
   const action = useAction();
   const [title, setTitle] = useState(collection?.title || ''),
@@ -1038,10 +1085,10 @@ function CreatorModal({
     <Modal
       title={
         type === 'publish'
-          ? 'Your first edition is ready.'
+          ? tr('Your first edition is ready.')
           : type === 'edit'
-            ? 'Make it your own.'
-            : 'Every collection starts with an idea.'
+            ? tr('Make it your own.')
+            : tr('Every collection starts with an idea.')
       }
       onClose={onClose}
     >
@@ -1050,11 +1097,11 @@ function CreatorModal({
           <>
             <h3>{collection?.title}</h3>
             <p>
-              {collection?.stock_count} assessed, vaulted specimens will be published as individual
-              listings.
+              {collection?.stock_count}
+              {tr(' assessed, vaulted specimens will be published as individual listings.')}
             </p>
             <label className="field">
-              Price per collectible (USD)
+              {tr('Price per collectible (USD)')}
               <input
                 required
                 type="number"
@@ -1069,18 +1116,18 @@ function CreatorModal({
         ) : (
           <>
             <label className="field">
-              Collection title
+              {tr('Collection title')}
               <input
                 required
                 minLength={3}
                 maxLength={100}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Give your first edition a name"
+                placeholder={tr('Give your first edition a name')}
               />
             </label>
             <label className="field">
-              The story behind it
+              {tr('The story behind it')}
               <textarea
                 required
                 minLength={20}
@@ -1088,22 +1135,24 @@ function CreatorModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                placeholder="What makes this collection worth keeping?"
+                placeholder={tr('What makes this collection worth keeping?')}
               />
             </label>
             {type === 'new' && (
               <>
                 <div className="form-two">
                   <label className="field">
-                    Category
+                    {tr('Category')}
                     <select value={category} onChange={(e) => setCategory(e.target.value)}>
                       {categories.map((c) => (
-                        <option key={c}>{c}</option>
+                        <option key={c} value={c}>
+                          {tr(c)}
+                        </option>
                       ))}
                     </select>
                   </label>
                   <label className="field">
-                    Edition size
+                    {tr('Edition size')}
                     <input
                       required
                       type="number"
@@ -1118,32 +1167,35 @@ function CreatorModal({
               </>
             )}
             <label className="field">
-              Rights & ownership evidence
+              {tr('Rights & ownership evidence')}
               <textarea
                 required
                 minLength={20}
                 maxLength={4000}
                 value={rights}
                 onChange={(e) => setRights(e.target.value)}
-                placeholder="Describe ownership, licensing scope, territory, and authorization. Use fictional evidence for this demo."
+                placeholder={tr(
+                  'Describe ownership, licensing scope, territory, and authorization. Use fictional evidence for this demo.',
+                )}
                 rows={4}
               />
             </label>
             <p className="muted">
-              Publishing requires independent rights review, physical stock receipt, and VIA
-              assessment. Creating a draft does not make items purchasable.
+              {tr(
+                'Publishing requires independent rights review, physical stock receipt, and VIA assessment. Creating a draft does not make items purchasable.',
+              )}
             </p>
           </>
         )}
         <ErrorNotice error={action.error} />
         <button className="button full" disabled={action.busy || uploadBusy}>
           {action.busy
-            ? 'Saving…'
+            ? tr('Saving…')
             : type === 'publish'
-              ? 'Publish collection'
+              ? tr('Publish collection')
               : type === 'edit'
-                ? 'Save changes'
-                : 'Create draft'}
+                ? tr('Save changes')
+                : tr('Create draft')}
           <ArrowRight size={16} />
         </button>
       </form>

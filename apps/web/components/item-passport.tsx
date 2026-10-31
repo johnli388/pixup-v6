@@ -1,72 +1,78 @@
 'use client';
+import { useI18n } from './i18n';
 import Link from 'next/link';
 import type { ItemPassport as Passport } from '../../../packages/domain/contracts';
-import { date } from './ui';
+import {} from './ui';
 
 export function ItemPassport({ passport: p }: { passport: Passport }) {
+  const { t: tr, date } = useI18n();
+
   return (
-    <section className="panel" aria-label="Item passport">
-      <h2>Item passport</h2>
+    <section className="panel" aria-label={tr('Item passport')}>
+      <h2>{tr('Item passport')}</h2>
       <dl className="spec-list">
         <div>
-          <dt>Source registration</dt>
+          <dt>{tr('Source registration')}</dt>
           <dd>
-            Registry record · {date(p.registered_at)}
+            {tr('Registry record · ')}
+            {date(p.registered_at)}
             <br />
             <small>{p.registration_scope}</small>
           </dd>
         </div>
         <div>
-          <dt>Issuance source</dt>
-          <dd>{p.issuance_mode || 'Not established'}</dd>
+          <dt>{tr('Issuance source')}</dt>
+          <dd>{p.issuance_mode || tr('Not established')}</dd>
         </div>
         <div>
-          <dt>VIA authenticity</dt>
+          <dt>{tr('VIA authenticity')}</dt>
           <dd>
-            {p.authenticity === 'unverified' ? 'Not yet VIA assessed' : p.authenticity}
+            {p.authenticity === 'unverified' ? tr('Not yet VIA assessed') : p.authenticity}
             <br />
             <small>
               {p.assessed_at
                 ? `Assessment recorded ${date(p.assessed_at)}`
-                : 'No assessment recorded'}
+                : tr('No assessment recorded')}
             </small>
           </dd>
         </div>
         <div>
-          <dt>Condition</dt>
+          <dt>{tr('Condition')}</dt>
           <dd>
             {p.condition_grade}
             {p.authenticity !== 'verified' && (
-              <small> · No current valid authenticity approval</small>
+              <small>{tr(' · No current valid authenticity approval')}</small>
             )}
           </dd>
         </div>
         <div>
-          <dt>Certificate</dt>
+          <dt>{tr('Certificate')}</dt>
           <dd>
             {p.certificate ? (
               <Link href={`/verify/${p.certificate.id}`}>
-                {p.certificate.status} assessment record
+                {p.certificate.status}
+                {tr(' assessment record')}
               </Link>
             ) : (
-              'No certificate issued'
+              tr('No certificate issued')
             )}
           </dd>
         </div>
         <div>
-          <dt>Physical custody</dt>
+          <dt>{tr('Physical custody')}</dt>
           <dd>
             {p.custody}
             <br />
             <small>
-              Custody and title are separate. Scanning a record does not claim ownership.
+              {tr('Custody and title are separate. Scanning a record does not claim ownership.')}
             </small>
           </dd>
         </div>
       </dl>
       <p className="muted">
-        Demonstration records. Physical authentication, rights evidence and custody have not been
-        independently verified.
+        {tr(
+          'Demonstration records. Physical authentication, rights evidence and custody have not been independently verified.',
+        )}
       </p>
     </section>
   );

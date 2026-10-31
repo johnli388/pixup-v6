@@ -1,9 +1,10 @@
 'use client';
+import { useI18n } from './i18n';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAction, useData, useSession, type Row } from './providers';
-import { AccountGate, Badge, Empty, ErrorNotice, Loading, Modal, PageTitle, date } from './ui';
+import { AccountGate, Badge, Empty, ErrorNotice, Loading, Modal, PageTitle } from './ui';
 import { SecuritySettings } from './identity-access';
 import { CommunitySamples } from './community-sample-preview';
 import {
@@ -26,16 +27,20 @@ function useRequestKey() {
 }
 const entryPath = (e: Row) => `/community/${e.post_id ? 'comments' : 'posts'}/${e.id}`;
 export function CommunityHub() {
+  const { t: tr } = useI18n();
+
   const { user, loading } = useSession();
   if (loading) return <Loading />;
   if (!user)
     return (
       <Empty
-        title="Community Hub"
-        description="Discuss IP cards, share your collecting stories and learn from other members. Sign in to join the member-only pilot. No purchase or subscription is required."
+        title={tr('Community Hub')}
+        description={tr(
+          'Discuss IP cards, share your collecting stories and learn from other members. Sign in to join the member-only pilot. No purchase or subscription is required.',
+        )}
       >
         <Link className="button" href="/login">
-          Sign in to Community
+          {tr('Sign in to Community')}
         </Link>
       </Empty>
     );
@@ -47,6 +52,8 @@ export function CommunityHub() {
   );
 }
 function CommunityInner() {
+  const { t: tr, date } = useI18n();
+
   const path = usePathname(),
     parts = path.split('/').filter(Boolean);
   const { data: me, error, isPending } = useData<Row>('/community/me');
@@ -55,11 +62,11 @@ function CommunityInner() {
   return (
     <div className="community">
       <PageTitle
-        eyebrow="PIXUP COMMUNITY"
-        title="Every collection has a story."
-        description="Ask questions, trade knowledge and find your people."
+        eyebrow={tr('PIXUP COMMUNITY')}
+        title={tr('Every collection has a story.')}
+        description={tr('Ask questions, trade knowledge and find your people.')}
       />
-      <nav aria-label="Community" className="community-actions">
+      <nav aria-label={tr('Community')} className="community-actions">
         {[
           ['/community', 'Latest'],
           ['/community/following', 'Following'],
@@ -72,32 +79,37 @@ function CommunityInner() {
           ['/community/recovery', 'Reports & appeals'],
         ].map(([url, label]) => (
           <Link key={url} href={url} aria-current={path === url ? 'page' : undefined}>
-            {label}
+            {tr(label)}
           </Link>
         ))}
         <Link className="button" href="/community/new">
-          Write a post
+          {tr('Write a post')}
         </Link>
       </nav>
       {!me.config.writes && (
         <p role="status" className="panel">
-          Community contributions are paused. Your drafts, reports and appeals remain available.
+          {tr(
+            'Community contributions are paused. Your drafts, reports and appeals remain available.',
+          )}
         </p>
       )}
       {(!me.profile || !me.accepted) && (
         <p className="panel">
-          Before posting,{' '}
+          {tr('Before posting,')}{' '}
           <Link href="/community/settings">
-            choose your community name and accept the guidelines
+            {tr('choose your community name and accept the guidelines')}
           </Link>
-          , then complete the {me.config.minimum_age}+ declaration in{' '}
-          <Link href="/account/settings">account settings</Link>.
+          {tr(', then complete the ')}
+          {me.config.minimum_age}
+          {tr('+ declaration in')} <Link href="/account/settings">{tr('account settings')}</Link>.
         </p>
       )}
       {me.sanction && (
         <p role="status">
-          Posting restricted until {date(me.sanction.until_at)}. You can{' '}
-          <Link href="/community/recovery">review the decision and appeal</Link>.
+          {tr('Posting restricted until ')}
+          {date(me.sanction.until_at)}
+          {tr('. You can')}{' '}
+          <Link href="/community/recovery">{tr('review the decision and appeal')}</Link>.
         </p>
       )}
       {parts[1] === 'samples' ? (
@@ -124,14 +136,14 @@ function CommunityInner() {
         !parts[1] ? (
           <>
             <p className="panel">
-              The member pilot is not open yet. Explore sample conversations below.
+              {tr('The member pilot is not open yet. Explore sample conversations below.')}
             </p>
             <CommunitySamples />
           </>
         ) : (
           <Empty
-            title="Community is not open yet"
-            description="The member pilot will appear here when it opens."
+            title={tr('Community is not open yet')}
+            description={tr('The member pilot will appear here when it opens.')}
           />
         )
       ) : (
@@ -145,6 +157,8 @@ function CommunityInner() {
   );
 }
 function CommunitySettings({ me }: { me: Row }) {
+  const { t: tr } = useI18n();
+
   const action = useAction();
   const [name, setName] = useState(me.profile?.display_name || ''),
     [bio, setBio] = useState(me.profile?.bio || ''),
@@ -152,8 +166,8 @@ function CommunitySettings({ me }: { me: Row }) {
     [accept, setAccept] = useState(false);
   return (
     <section className="panel">
-      <h2>Your community identity</h2>
-      <p>Only the name and bio you choose here appear on your community profile.</p>
+      <h2>{tr('Your community identity')}</h2>
+      <p>{tr('Only the name and bio you choose here appear on your community profile.')}</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -165,7 +179,7 @@ function CommunitySettings({ me }: { me: Row }) {
         }}
       >
         <label>
-          Community display name
+          {tr('Community display name')}
           <input
             required
             minLength={2}
@@ -175,7 +189,7 @@ function CommunitySettings({ me }: { me: Row }) {
           />
         </label>
         <label>
-          About your interests
+          {tr('About your interests')}
           <textarea maxLength={600} value={bio} onChange={(e) => setBio(e.target.value)} />
         </label>
         <label>
@@ -184,16 +198,19 @@ function CommunitySettings({ me }: { me: Row }) {
             checked={notifications}
             onChange={(e) => setNotifications(e.target.checked)}
           />{' '}
-          Notify me about replies
+          {tr('Notify me about replies')}
         </label>
         <button className="button" disabled={action.busy}>
-          Save community profile
+          {tr('Save community profile')}
         </button>
       </form>
-      <h3>Community guidelines</h3>
+      <h3>{tr('Community guidelines')}</h3>
       <p>{communityGuidelines}</p>
       {me.accepted ? (
-        <p>Accepted · {communityGuidelinesVersion}</p>
+        <p>
+          {tr('Accepted · ')}
+          {communityGuidelinesVersion}
+        </p>
       ) : (
         <form
           onSubmit={async (e) => {
@@ -212,16 +229,16 @@ function CommunitySettings({ me }: { me: Row }) {
               checked={accept}
               onChange={(e) => setAccept(e.target.checked)}
             />{' '}
-            I agree to these community guidelines
+            {tr('I agree to these community guidelines')}
           </label>
           <button className="button" disabled={!accept || action.busy}>
-            Accept guidelines
+            {tr('Accept guidelines')}
           </button>
         </form>
       )}
-      <h3>Follow and mute preferences</h3>
+      <h3>{tr('Follow and mute preferences')}</h3>
       {me.relations.length === 0 ? (
-        <p>No follows or mutes yet.</p>
+        <p>{tr('No follows or mutes yet.')}</p>
       ) : (
         me.relations.map((r: Row) => (
           <p key={r.kind + r.target}>
@@ -232,20 +249,22 @@ function CommunitySettings({ me }: { me: Row }) {
                 action.run('/community/relations', { ...r, enabled: false }, 'Preference removed.')
               }
             >
-              Remove
+              {tr('Remove')}
             </button>
           </p>
         ))
       )}
       <p>
-        Export or request deletion of your community content from{' '}
-        <Link href="/account/settings">account privacy settings</Link>.
+        {tr('Export or request deletion of your community content from')}{' '}
+        <Link href="/account/settings">{tr('account privacy settings')}</Link>.
       </p>
       <ErrorNotice error={action.error} />
     </section>
   );
 }
 function Topics({ me }: { me: Row }) {
+  const { t: tr } = useI18n();
+
   const { data, error, isPending } = useData<Row[]>('/community/topics');
   const action = useAction();
   return (
@@ -261,7 +280,7 @@ function Topics({ me }: { me: Row }) {
               </h2>
               <p>{t.description}</p>
               {!t.active ? (
-                <Badge>Archived</Badge>
+                <Badge>{tr('Archived')}</Badge>
               ) : (
                 <div className="community-actions">
                   {['follow', 'mute_topic'].map((kind) => {
@@ -282,11 +301,11 @@ function Topics({ me }: { me: Row }) {
                       >
                         {kind === 'follow'
                           ? enabled
-                            ? 'Unfollow'
-                            : 'Follow'
+                            ? tr('Unfollow')
+                            : tr('Follow')
                           : enabled
-                            ? 'Unmute'
-                            : 'Mute'}{' '}
+                            ? tr('Unmute')
+                            : tr('Mute')}{' '}
                         {t.name}
                       </button>
                     );
@@ -299,7 +318,7 @@ function Topics({ me }: { me: Row }) {
       </section>
       <ErrorNotice error={error || action.error} />
       <section className="panel">
-        <h2>Suggest a topic</h2>
+        <h2>{tr('Suggest a topic')}</h2>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -316,15 +335,15 @@ function Topics({ me }: { me: Row }) {
           }}
         >
           <label>
-            Topic name
+            {tr('Topic name')}
             <input name="name" required minLength={2} maxLength={80} />
           </label>
           <label>
-            What would members discuss?
+            {tr('What would members discuss?')}
             <textarea name="description" required minLength={10} maxLength={600} />
           </label>
           <button className="button" disabled={action.busy}>
-            Suggest topic
+            {tr('Suggest topic')}
           </button>
         </form>
       </section>
@@ -340,6 +359,8 @@ function Feed({
   topic?: string;
   profile?: string;
 }) {
+  const { t: tr } = useI18n();
+
   const [q, setQ] = useState(''),
     [query, setQuery] = useState(''),
     [type, setType] = useState(''),
@@ -367,7 +388,9 @@ function Feed({
     return (
       <>
         <p className="panel">
-          No member posts yet. Explore these sample conversations while the community gets started.
+          {tr(
+            'No member posts yet. Explore these sample conversations while the community gets started.',
+          )}
         </p>
         <CommunitySamples />
       </>
@@ -379,12 +402,12 @@ function Feed({
         {topic
           ? `Topic: ${topic.replaceAll('-', ' ')}`
           : feed === 'mine'
-            ? 'My posts and drafts'
+            ? tr('My posts and drafts')
             : feed === 'saved'
-              ? 'Saved posts'
+              ? tr('Saved posts')
               : feed === 'following'
-                ? 'From topics you follow'
-                : 'Latest conversations'}
+                ? tr('From topics you follow')
+                : tr('Latest conversations')}
       </h2>
       <form
         className="community-actions"
@@ -395,11 +418,11 @@ function Feed({
         }}
       >
         <label>
-          Search community
+          {tr('Search community')}
           <input maxLength={120} value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <label>
-          Post type
+          {tr('Post type')}
           <select
             value={type}
             onChange={(e) => {
@@ -407,13 +430,15 @@ function Feed({
               setCursor('');
             }}
           >
-            <option value="">All post types</option>
+            <option value="">{tr('All post types')}</option>
             {communityTypes.map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {tr(t)}
+              </option>
             ))}
           </select>
         </label>
-        <button className="button secondary">Search posts</button>
+        <button className="button secondary">{tr('Search posts')}</button>
       </form>
       {isPending ? (
         <Loading />
@@ -425,18 +450,18 @@ function Feed({
             <Empty
               title={
                 feed === 'following'
-                  ? 'Follow a topic to start a conversation.'
-                  : 'No posts here yet.'
+                  ? tr('Follow a topic to start a conversation.')
+                  : tr('No posts here yet.')
               }
-              description="Try another topic or share a story of your own."
+              description={tr('Try another topic or share a story of your own.')}
             />
           ) : (
             data.items.map((post: Row) => <PostCard key={post.id} post={post} />)
           )}
           <div className="community-actions">
-            {cursor && <button onClick={() => setCursor('')}>Back to newest</button>}
+            {cursor && <button onClick={() => setCursor('')}>{tr('Back to newest')}</button>}
             {data.next_cursor && (
-              <button onClick={() => setCursor(data.next_cursor)}>Next posts</button>
+              <button onClick={() => setCursor(data.next_cursor)}>{tr('Next posts')}</button>
             )}
           </div>
         </>
@@ -445,6 +470,8 @@ function Feed({
   );
 }
 function Author({ entry }: { entry: Row }) {
+  const { t: tr, date } = useI18n();
+
   return (
     <span>
       {entry.author ? (
@@ -452,19 +479,21 @@ function Author({ entry }: { entry: Row }) {
           {entry.author.display_name}
         </Link>
       ) : (
-        'Deleted member'
+        tr('Deleted member')
       )}{' '}
       · {date(entry.created_at)}
-      {entry.version > 2 ? ' · edited/reviewed' : ''}
+      {entry.version > 2 ? tr(' · edited/reviewed') : ''}
     </span>
   );
 }
 function PostCard({ post }: { post: Row }) {
+  const { t: tr } = useI18n();
+
   return (
     <article className="panel">
       <div className="community-actions">
-        <Badge>{post.type}</Badge>
-        {post.own && <Badge>{post.state === 'draft' ? 'Draft' : post.moderation}</Badge>}
+        <Badge>{tr(post.type)}</Badge>
+        {post.own && <Badge>{post.state === 'draft' ? tr('Draft') : post.moderation}</Badge>}
       </div>
       <h3>
         <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
@@ -480,7 +509,10 @@ function PostCard({ post }: { post: Row }) {
             {t.name}
           </Link>
         ))}
-        <span>{post.likes} likes</span>
+        <span>
+          {post.likes}
+          {tr(' likes')}
+        </span>
       </div>
     </article>
   );
@@ -493,6 +525,8 @@ function LoadComposer({ id }: { id: string }) {
   return <Composer initial={data} />;
 }
 function Composer({ initial }: { initial?: Row }) {
+  const { t: tr } = useI18n();
+
   const { data: topics } = useData<Row[]>('/community/topics');
   const { data: catalog } = useData<Row>('/catalog');
   const action = useAction(),
@@ -580,10 +614,11 @@ function Composer({ initial }: { initial?: Row }) {
   const cards = Array.isArray(catalog?.items) ? catalog.items : [];
   return (
     <section className="panel">
-      <h2>{initial ? 'Edit your post' : 'Share a story or start a discussion'}</h2>
+      <h2>{initial ? tr('Edit your post') : tr('Share a story or start a discussion')}</h2>
       <p>
-        Text only for this pilot. New posts and edited content enter moderator review. Your words
-        remain in this editor if a request fails.
+        {tr(
+          'Text only for this pilot. New posts and edited content enter moderator review. Your words remain in this editor if a request fails.',
+        )}
       </p>
       <form
         onSubmit={async (e) => {
@@ -592,15 +627,17 @@ function Composer({ initial }: { initial?: Row }) {
         }}
       >
         <label>
-          Post type
+          {tr('Post type')}
           <select value={type} disabled={!!saved} onChange={(e) => setType(e.target.value)}>
             {communityTypes.map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {tr(t)}
+              </option>
             ))}
           </select>
         </label>
         <label>
-          Title
+          {tr('Title')}
           <input
             required
             minLength={3}
@@ -610,7 +647,7 @@ function Composer({ initial }: { initial?: Row }) {
           />
         </label>
         <fieldset>
-          <legend>Topics (choose up to three)</legend>
+          <legend>{tr('Topics (choose up to three)')}</legend>
           {topics
             ?.filter((t) => t.active)
             .map((t) => (
@@ -630,7 +667,7 @@ function Composer({ initial }: { initial?: Row }) {
             ))}
         </fieldset>
         <label>
-          Your post
+          {tr('Your post')}
           <textarea
             required
             maxLength={20000}
@@ -640,7 +677,7 @@ function Composer({ initial }: { initial?: Row }) {
           />
         </label>
         <label>
-          Link a public card (optional)
+          {tr('Link a public card (optional)')}
           <select
             value=""
             disabled={assets.length >= 5}
@@ -649,7 +686,7 @@ function Composer({ initial }: { initial?: Row }) {
                 setAssets([...assets, e.target.value]);
             }}
           >
-            <option value="">Choose a card</option>
+            <option value="">{tr('Choose a card')}</option>
             {cards.map((a: Row) => (
               <option key={a.id} value={a.id}>
                 {a.title}
@@ -659,18 +696,18 @@ function Composer({ initial }: { initial?: Row }) {
         </label>
         {assets.map((a) => (
           <p key={a}>
-            {cards.find((item: Row) => item.id === a)?.title || 'Linked card'}{' '}
+            {cards.find((item: Row) => item.id === a)?.title || tr('Linked card')}{' '}
             <button type="button" onClick={() => setAssets(assets.filter((x) => x !== a))}>
-              Remove card
+              {tr('Remove card')}
             </button>
           </p>
         ))}
         <div className="community-actions">
           <button className="button secondary" type="button" onClick={() => setPreview(!preview)}>
-            {preview ? 'Close preview' : 'Preview post'}
+            {preview ? tr('Close preview') : tr('Preview post')}
           </button>
           <button className="button secondary" disabled={!valid || action.busy}>
-            {saved?.state === 'published' ? 'Save edits for review' : 'Save draft'}
+            {saved?.state === 'published' ? tr('Save edits for review') : tr('Save draft')}
           </button>
           {saved?.state !== 'published' && (
             <button
@@ -692,7 +729,7 @@ function Composer({ initial }: { initial?: Row }) {
                 }
               }}
             >
-              Submit for review
+              {tr('Submit for review')}
             </button>
           )}
         </div>
@@ -708,20 +745,22 @@ function Composer({ initial }: { initial?: Row }) {
             setStatus('Current version loaded. Review your unsent text before saving again.');
           }}
         >
-          Load current version and keep my text
+          {tr('Load current version and keep my text')}
         </button>
       )}
       {preview && (
         <article className="panel">
-          <h3>{title || 'Untitled preview'}</h3>
+          <h3>{title || tr('Untitled preview')}</h3>
           <p className="community-body">{body}</p>
         </article>
       )}
-      {saved && <Link href={`/community/posts/${saved.id}`}>View saved post</Link>}
+      {saved && <Link href={`/community/posts/${saved.id}`}>{tr('View saved post')}</Link>}
     </section>
   );
 }
 function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) {
+  const { t: tr } = useI18n();
+
   const action = useAction();
   const [report, setReport] = useState(false),
     [deleting, setDeleting] = useState(false),
@@ -742,7 +781,7 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
                 })
               }
             >
-              {entry.liked ? 'Unlike' : 'Like'} ({entry.likes})
+              {entry.liked ? tr('Unlike') : tr('Like')} ({entry.likes})
             </button>
             {!entry.post_id && (
               <button
@@ -755,20 +794,21 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
                   })
                 }
               >
-                {entry.saved ? 'Unsave' : 'Save post'}
+                {entry.saved ? tr('Unsave') : tr('Save post')}
               </button>
             )}
-            {onReply && <button onClick={onReply}>Reply to comment</button>}
-            <button onClick={() => setReport(true)}>Report</button>
+            {onReply && <button onClick={onReply}>{tr('Reply to comment')}</button>}
+            <button onClick={() => setReport(true)}>{tr('Report')}</button>
             {entry.own ? (
               <>
                 {entry.post_id ? (
-                  <button onClick={() => setEditing(!editing)}>Edit comment</button>
+                  <button onClick={() => setEditing(!editing)}>{tr('Edit comment')}</button>
                 ) : (
-                  <Link href={`/community/posts/${entry.id}/edit`}>Edit post</Link>
+                  <Link href={`/community/posts/${entry.id}/edit`}>{tr('Edit post')}</Link>
                 )}
                 <button onClick={() => setDeleting(true)}>
-                  Delete {entry.post_id ? 'comment' : 'post'}
+                  {tr('Delete ')}
+                  {entry.post_id ? tr('comment') : tr('post')}
                 </button>
               </>
             ) : (
@@ -783,7 +823,7 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
                     )
                   }
                 >
-                  Mute member
+                  {tr('Mute member')}
                 </button>
               )
             )}
@@ -806,7 +846,7 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
           }}
         >
           <label>
-            Edit your comment
+            {tr('Edit your comment')}
             <textarea
               required
               maxLength={3000}
@@ -815,12 +855,12 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
             />
           </label>
           <button className="button" disabled={action.busy}>
-            Save comment
+            {tr('Save comment')}
           </button>
         </form>
       )}
       {report && (
-        <Modal title="Report community content" onClose={() => setReport(false)}>
+        <Modal title={tr('Report community content')} onClose={() => setReport(false)}>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -840,32 +880,37 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
             }}
           >
             <label>
-              Reason
+              {tr('Reason')}
               <select name="category">
                 {['spam', 'harassment', 'privacy', 'rights', 'inappropriate', 'other'].map((t) => (
-                  <option key={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {tr(t)}
+                  </option>
                 ))}
               </select>
             </label>
             <label>
-              What should the moderator know?
+              {tr('What should the moderator know?')}
               <textarea name="explanation" required minLength={10} maxLength={2000} />
             </label>
             <button className="button" disabled={action.busy}>
-              Send report
+              {tr('Send report')}
             </button>
             <ErrorNotice error={action.error} />
           </form>
         </Modal>
       )}
       {deleting && (
-        <Modal title="Delete your content?" onClose={() => setDeleting(false)}>
+        <Modal title={tr('Delete your content?')} onClose={() => setDeleting(false)}>
           <p>
             {entry.post_id
-              ? 'Your text will be removed. Existing replies may remain beneath a deletion placeholder.'
-              : 'Deleting this post hides its entire thread from other members.'}{' '}
-            Restricted revisions may be retained for up to 90 days, or while a report or appeal is
-            open.
+              ? tr(
+                  'Your text will be removed. Existing replies may remain beneath a deletion placeholder.',
+                )
+              : tr('Deleting this post hides its entire thread from other members.')}{' '}
+            {tr(
+              'Restricted revisions may be retained for up to 90 days, or while a report or appeal is open.',
+            )}
           </p>
           <button
             className="button"
@@ -881,7 +926,7 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
                 setDeleting(false);
             }}
           >
-            Confirm deletion
+            {tr('Confirm deletion')}
           </button>
           <ErrorNotice error={action.error} />
         </Modal>
@@ -890,6 +935,8 @@ function EntryActions({ entry, onReply }: { entry: Row; onReply?: () => void }) 
   );
 }
 function Thread({ id }: { id: string }) {
+  const { t: tr } = useI18n();
+
   const { data: post, error, isPending } = useData<Row>(`/community/posts/${id}`);
   const [cursor, setCursor] = useState(''),
     [parent, setParent] = useState<Row | null>(null),
@@ -905,21 +952,21 @@ function Thread({ id }: { id: string }) {
   return (
     <>
       <article className="panel">
-        <Badge>{post.type}</Badge>
+        <Badge>{tr(post.type)}</Badge>
         <h2>{post.title}</h2>
         <Author entry={post} />
         {post.own && (
           <p>
-            Status:{' '}
+            {tr('Status:')}{' '}
             {post.state === 'draft'
-              ? 'Draft'
+              ? tr('Draft')
               : post.state === 'deleted'
-                ? 'Deleted'
+                ? tr('Deleted')
                 : post.moderation}
           </p>
         )}
         <p className="community-body">{post.body}</p>
-        <p className="muted">Member contribution · not an official card assessment.</p>
+        <p className="muted">{tr('Member contribution · not an official card assessment.')}</p>
         <div className="community-actions">
           {post.links.map((a: Row, i: number) =>
             a.id ? (
@@ -927,7 +974,7 @@ function Thread({ id }: { id: string }) {
                 {a.title}
               </Link>
             ) : (
-              <span key={i}>Linked item unavailable</span>
+              <span key={i}>{tr('Linked item unavailable')}</span>
             ),
           )}
         </div>
@@ -935,22 +982,29 @@ function Thread({ id }: { id: string }) {
       </article>
       {post.state === 'published' && post.moderation === 'visible' && (
         <section className="panel">
-          <h2>Comments</h2>
+          <h2>{tr('Comments')}</h2>
           <ErrorNotice error={comments.error} />
-          {comments.data?.items.length === 0 && <p>Be the first to share your experience.</p>}
+          {comments.data?.items.length === 0 && (
+            <p>{tr('Be the first to share your experience.')}</p>
+          )}
           {comments.data?.items.map((comment: Row) => (
             <article
               id={`comment-${comment.id}`}
               className={`community-comment ${comment.parent_id ? 'community-reply' : ''}`}
               key={comment.id}
             >
-              {comment.parent_id && <p className="muted">Reply to a comment in this thread</p>}
+              {comment.parent_id && (
+                <p className="muted">{tr('Reply to a comment in this thread')}</p>
+              )}
               <Author entry={comment} />
               <p className="community-body">
-                {comment.state === 'deleted' ? 'Comment deleted' : comment.body}
+                {comment.state === 'deleted' ? tr('Comment deleted') : comment.body}
               </p>
               {comment.own && comment.moderation !== 'visible' && (
-                <p>Status: {comment.moderation}</p>
+                <p>
+                  {tr('Status: ')}
+                  {comment.moderation}
+                </p>
               )}
               <EntryActions
                 entry={comment}
@@ -966,13 +1020,15 @@ function Thread({ id }: { id: string }) {
             </article>
           ))}
           <div className="community-actions">
-            {cursor && <button onClick={() => setCursor('')}>First comments</button>}
+            {cursor && <button onClick={() => setCursor('')}>{tr('First comments')}</button>}
             {comments.data?.next_cursor && (
-              <button onClick={() => setCursor(comments.data!.next_cursor)}>Next comments</button>
+              <button onClick={() => setCursor(comments.data!.next_cursor)}>
+                {tr('Next comments')}
+              </button>
             )}
           </div>
           {post.locked ? (
-            <p>Replies are closed for this thread.</p>
+            <p>{tr('Replies are closed for this thread.')}</p>
           ) : (
             <form
               onSubmit={async (e) => {
@@ -994,14 +1050,15 @@ function Thread({ id }: { id: string }) {
             >
               {parent && (
                 <p>
-                  Replying to {parent.author?.display_name || 'a member'}{' '}
+                  {tr('Replying to ')}
+                  {parent.author?.display_name || tr('a member')}{' '}
                   <button type="button" onClick={() => setParent(null)}>
-                    Cancel reply
+                    {tr('Cancel reply')}
                   </button>
                 </p>
               )}
               <label>
-                Your comment
+                {tr('Your comment')}
                 <textarea
                   id="community-reply"
                   required
@@ -1011,7 +1068,7 @@ function Thread({ id }: { id: string }) {
                 />
               </label>
               <button className="button" disabled={action.busy}>
-                Submit comment for review
+                {tr('Submit comment for review')}
               </button>
               <ErrorNotice error={action.error} />
             </form>
@@ -1036,26 +1093,30 @@ function Member({ id }: { id: string }) {
   );
 }
 function Notifications() {
+  const { t: tr, date } = useI18n();
+
   const { data, error, isPending } = useData<Row>('/community/me/notifications');
   return (
     <section className="panel">
-      <h2>Community notifications</h2>
+      <h2>{tr('Community notifications')}</h2>
       {isPending ? (
         <Loading />
       ) : !data ? (
         <ErrorNotice error={error} />
       ) : data.items.length === 0 ? (
-        <p>No community notifications yet.</p>
+        <p>{tr('No community notifications yet.')}</p>
       ) : (
         data.items.map((n: Row) => (
           <p key={n.id}>
             {n.kind === 'reply'
-              ? 'A member replied to your conversation.'
-              : 'A moderator reviewed your content or appeal.'}{' '}
+              ? tr('A member replied to your conversation.')
+              : tr('A moderator reviewed your content or appeal.')}{' '}
             {n.kind === 'moderation' ? (
-              <Link href="/community/recovery">View decision</Link>
+              <Link href="/community/recovery">{tr('View decision')}</Link>
             ) : (
-              n.post_id && <Link href={`/community/posts/${n.post_id}`}>Open conversation</Link>
+              n.post_id && (
+                <Link href={`/community/posts/${n.post_id}`}>{tr('Open conversation')}</Link>
+              )
             )}{' '}
             · {date(n.created_at)}
           </p>
@@ -1065,23 +1126,25 @@ function Notifications() {
   );
 }
 function Recovery() {
+  const { t: tr } = useI18n();
+
   const { data, error, isPending } = useData<Row>('/community/me/recovery');
   const action = useAction();
   if (isPending) return <Loading />;
   if (!data) return <ErrorNotice error={error} />;
   return (
     <section className="panel">
-      <h2>Reports and appeals</h2>
-      <p>Your reports are private. A different moderator reviews appeals.</p>
-      <h3>Your reports</h3>
-      {data.reports.length === 0 && <p>No reports submitted.</p>}
+      <h2>{tr('Reports and appeals')}</h2>
+      <p>{tr('Your reports are private. A different moderator reviews appeals.')}</p>
+      <h3>{tr('Your reports')}</h3>
+      {data.reports.length === 0 && <p>{tr('No reports submitted.')}</p>}
       {data.reports.map((r: Row) => (
         <p key={r.id}>
           {r.category} · {r.state} · {r.explanation}
         </p>
       ))}
-      <h3>Decisions about your content</h3>
-      {data.actions.length === 0 && <p>No moderation decisions yet.</p>}
+      <h3>{tr('Decisions about your content')}</h3>
+      {data.actions.length === 0 && <p>{tr('No moderation decisions yet.')}</p>}
       {data.actions.map((a: Row) => (
         <article className="panel" key={a.id}>
           <h4>{a.action.replaceAll('_', ' ')}</h4>
@@ -1091,12 +1154,13 @@ function Recovery() {
               .filter((r: Row) => r.action_id === a.id)
               .map((r: Row) => (
                 <p key={r.id}>
-                  Appeal: {r.state}. {r.reason}
+                  {tr('Appeal: ')}
+                  {r.state}. {r.reason}
                 </p>
               ))
           ) : (
             <details>
-              <summary>Appeal this decision</summary>
+              <summary>{tr('Appeal this decision')}</summary>
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -1109,11 +1173,11 @@ function Recovery() {
                 }}
               >
                 <label>
-                  Why should we reconsider?
+                  {tr('Why should we reconsider?')}
                   <textarea name="statement" required minLength={10} maxLength={2000} />
                 </label>
                 <button className="button secondary" disabled={action.busy}>
-                  Submit appeal
+                  {tr('Submit appeal')}
                 </button>
               </form>
             </details>
@@ -1126,6 +1190,8 @@ function Recovery() {
 }
 
 export function CommunityModeration() {
+  const { t: tr } = useI18n();
+
   const { data, error, isPending } = useData<Row>('/ops/community');
   const action = useAction();
   const [lookup, setLookup] = useState('');
@@ -1139,22 +1205,24 @@ export function CommunityModeration() {
     return (
       <>
         <ErrorNotice error={error} />
-        <Link href="/account/security">Verify your authenticator for moderation</Link>
+        <Link href="/account/security">{tr('Verify your authenticator for moderation')}</Link>
       </>
     );
   const decision = (entry: Row) => (
     <article className="panel" key={entry.id}>
-      <h3>{entry.title || 'Comment'}</h3>
+      <h3>{entry.title || tr('Comment')}</h3>
       <p>
-        By {entry.display_name || entry.author?.display_name} · {entry.moderation} · version{' '}
-        {entry.version}
+        {tr('By ')}
+        {entry.display_name || entry.author?.display_name} · {entry.moderation}
+        {tr(' · version')} {entry.version}
       </p>
       <p className="community-body">{entry.body}</p>
       {data.reports
         .filter((r: Row) => r.entry_id === entry.id)
         .map((r: Row) => (
           <p key={r.id}>
-            Report: {r.category} · {r.explanation}
+            {tr('Report: ')}
+            {r.category} · {r.explanation}
           </p>
         ))}
       <form
@@ -1174,35 +1242,38 @@ export function CommunityModeration() {
         }}
       >
         <label>
-          Decision
+          {tr('Decision')}
           <select name="action">
             {['approve', 'hide', 'remove', 'lock', 'unlock', 'restrict', 'restore_posting'].map(
               (a) => (
-                <option key={a}>{a}</option>
+                <option key={a} value={a}>
+                  {tr(a)}
+                </option>
               ),
             )}
           </select>
         </label>
         <label>
-          Posting restriction duration (days)
+          {tr('Posting restriction duration (days)')}
           <input type="number" name="days" min={1} max={30} defaultValue={7} />
         </label>
         <label>
-          Reason shown to the author
+          {tr('Reason shown to the author')}
           <textarea name="reason" required minLength={10} maxLength={2000} />
         </label>
         <button className="button" disabled={action.busy}>
-          Record decision
+          {tr('Record decision')}
         </button>
       </form>
     </article>
   );
   return (
     <section>
-      <h2>Community moderation</h2>
+      <h2>{tr('Community moderation')}</h2>
       <p>
-        Review content carefully. You cannot decide your own content, your reports or your own
-        appealed decision.
+        {tr(
+          'Review content carefully. You cannot decide your own content, your reports or your own appealed decision.',
+        )}
       </p>
       <ErrorNotice error={action.error} />
       <form
@@ -1213,16 +1284,16 @@ export function CommunityModeration() {
         }}
       >
         <label>
-          Published post ID
+          {tr('Published post ID')}
           <input value={lookup} onChange={(e) => setLookup(e.target.value)} />
         </label>
-        <button>Find post to lock or review</button>
+        <button>{tr('Find post to lock or review')}</button>
       </form>
       <ErrorNotice error={lookupError} />
       {lookedUp && decision(lookedUp)}
-      {data.entries.length === 0 && <p>No content awaiting review.</p>}
+      {data.entries.length === 0 && <p>{tr('No content awaiting review.')}</p>}
       {data.entries.map(decision)}
-      <h3>Independent appeals</h3>
+      <h3>{tr('Independent appeals')}</h3>
       {data.appeals.map((a: Row) => (
         <article className="panel" key={a.id}>
           <p>
@@ -1240,30 +1311,32 @@ export function CommunityModeration() {
             }}
           >
             <label>
-              Appeal decision
+              {tr('Appeal decision')}
               <select name="decision">
-                <option value="uphold">Uphold decision</option>
-                <option value="overturn">Overturn decision (content returns to review)</option>
+                <option value="uphold">{tr('Uphold decision')}</option>
+                <option value="overturn">
+                  {tr('Overturn decision (content returns to review)')}
+                </option>
               </select>
             </label>
             <label>
-              Appeal reason
+              {tr('Appeal reason')}
               <textarea name="reason" required minLength={10} maxLength={2000} />
             </label>
             <button className="button" disabled={action.busy}>
-              Review appeal
+              {tr('Review appeal')}
             </button>
           </form>
         </article>
       ))}
-      <h3>Suggested topics</h3>
+      <h3>{tr('Suggested topics')}</h3>
       {data.suggestions.map((s: Row) => (
         <p key={s.id}>
           {s.name} · {s.description}
         </p>
       ))}
       <details>
-        <summary>Create or update a topic</summary>
+        <summary>{tr('Create or update a topic')}</summary>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -1281,22 +1354,23 @@ export function CommunityModeration() {
           }}
         >
           <label>
-            Topic slug
+            {tr('Topic slug')}
             <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={60} />
           </label>
           <label>
-            Topic name
+            {tr('Topic name')}
             <input name="name" required minLength={2} maxLength={80} />
           </label>
           <label>
-            Description
+            {tr('Description')}
             <textarea name="description" required minLength={10} maxLength={600} />
           </label>
           <label>
-            <input name="active" type="checkbox" defaultChecked /> Active topic
+            <input name="active" type="checkbox" defaultChecked />
+            {tr(' Active topic')}
           </label>
           <button className="button" disabled={action.busy}>
-            Save topic
+            {tr('Save topic')}
           </button>
         </form>
       </details>

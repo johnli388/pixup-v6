@@ -1,9 +1,10 @@
 'use client';
+import { useI18n } from './i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { Bot, Search, Send, Sparkles, Trash2 } from 'lucide-react';
 import { useData, useSession } from './providers';
-import { AccountGate, Badge, ErrorNotice, PageTitle, money } from './ui';
+import { AccountGate, Badge, ErrorNotice, PageTitle } from './ui';
 import { CardArt } from './art';
 import { SecuritySettings } from './identity-access';
 import type { AssistantConfig, AssistantResponse } from '../../../packages/domain/assistant';
@@ -24,6 +25,8 @@ export function Assistant() {
 }
 
 function AssistantChat() {
+  const { t: tr, money, locale } = useI18n();
+
   const { request } = useSession();
   const { data: config, error: configError } = useData<AssistantConfig>('/assistant/config');
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -42,7 +45,7 @@ function AssistantChat() {
 
   async function send(event?: FormEvent, suggested?: string) {
     event?.preventDefault();
-    const question = (suggested ?? message).trim();
+    const question = (suggested ? tr(suggested) : message).trim();
     if (!question || controller.current) return;
     const abort = new AbortController();
     controller.current = abort;
@@ -57,6 +60,7 @@ function AssistantChat() {
         '/assistant/messages',
         {
           message: question,
+          locale,
           history,
           use_ai: useAI && !!config?.ai_available,
         },
@@ -85,12 +89,15 @@ function AssistantChat() {
   return (
     <>
       <PageTitle
-        eyebrow="YOUR COLLECTING COMPANION"
-        title="Ask PixUP Guide"
-        description="Find your next card, explore sellers and get help with your collecting journey."
+        eyebrow={tr('YOUR COLLECTING COMPANION')}
+        title={tr('Ask PixUP Guide')}
+        description={tr(
+          'Find your next card, explore sellers and get help with your collecting journey.',
+        )}
       >
         <Badge>
-          <Bot size={16} /> {config?.ai_available && useAI ? 'AI answers enabled' : 'Search & help'}
+          <Bot size={16} />{' '}
+          {config?.ai_available && useAI ? tr('AI answers enabled') : tr('Search & help')}
         </Badge>
       </PageTitle>
       <div className="assistant-layout">
@@ -99,10 +106,11 @@ function AssistantChat() {
             <Sparkles size={28} />
           </span>
           <h2>
-            A little guidance.
-            <br />A great next find.
+            {tr('A little guidance.')}
+            <br />
+            {tr('A great next find.')}
           </h2>
-          <p>Ask about cards, prices, public sellers, your orders or how PixUP works.</p>
+          <p>{tr('Ask about cards, prices, public sellers, your orders or how PixUP works.')}</p>
           <div className="assistant-suggestions">
             {suggestions.map((question) => (
               <button
@@ -111,19 +119,21 @@ function AssistantChat() {
                 onClick={() => void send(undefined, question)}
               >
                 <Search size={15} />
-                <span>{question}</span>
+                <span>{tr(question)}</span>
               </button>
             ))}
           </div>
           <p className="muted">
-            Buyer searches cover your own sales only. The guide can find information; purchases and
-            account changes happen on their usual pages.
+            {tr(
+              'Buyer searches cover your own sales only. The guide can find information; purchases and account changes happen on their usual pages.',
+            )}
           </p>
         </aside>
-        <section className="panel assistant-chat" aria-label="PixUP Guide chat">
+        <section className="panel assistant-chat" aria-label={tr('PixUP Guide chat')}>
           <div className="assistant-chat-heading">
             <h2>
-              <Bot size={22} /> PixUP Guide
+              <Bot size={22} />
+              {tr(' PixUP Guide')}
             </h2>
             <button
               className="text-link"
@@ -135,7 +145,8 @@ function AssistantChat() {
                 input.current?.focus();
               }}
             >
-              <Trash2 size={15} /> Clear chat
+              <Trash2 size={15} />
+              {tr(' Clear chat')}
             </button>
           </div>
           <div
@@ -143,25 +154,25 @@ function AssistantChat() {
             role="log"
             aria-live="polite"
             aria-relevant="additions"
-            aria-label="Conversation"
+            aria-label={tr('Conversation')}
           >
             {!turns.length && !pending && (
               <div className="assistant-welcome">
                 <Bot size={32} />
-                <h3>What would you like to discover?</h3>
-                <p>Try “Find art cards under $80” or “How do I publish a collection?”</p>
+                <h3>{tr('What would you like to discover?')}</h3>
+                <p>{tr('Try “Find art cards under $80” or “How do I publish a collection?”')}</p>
               </div>
             )}
             {turns.map((turn, index) => (
               <div className="assistant-turn" key={index}>
                 <p className="assistant-question">
-                  <strong>You</strong>
+                  <strong>{tr('You')}</strong>
                   {turn.question}
                 </p>
                 <div className="assistant-answer">
                   <span className="eyebrow">
-                    PixUP Guide ·{' '}
-                    {turn.response.mode === 'ai' ? 'AI answer' : 'Local search & help'}
+                    {tr('PixUP Guide ·')}{' '}
+                    {turn.response.mode === 'ai' ? tr('AI answer') : tr('Local search & help')}
                   </span>
                   <p>{turn.response.answer}</p>
                   {!!turn.response.notice && (
@@ -176,7 +187,7 @@ function AssistantChat() {
                       >
                         {result.artwork && <CardArt variant={result.artwork} />}
                         <span>
-                          <small>{result.kind}</small>
+                          <small>{tr(result.kind)}</small>
                           <strong>{result.title}</strong>
                           <span>{result.description}</span>
                           {result.price_cents !== undefined && <b>{money(result.price_cents)}</b>}
@@ -190,17 +201,17 @@ function AssistantChat() {
             {pending && (
               <div className="assistant-turn">
                 <p className="assistant-question">
-                  <strong>You</strong>
+                  <strong>{tr('You')}</strong>
                   {pending}
                 </p>
-                <p role="status">Searching PixUP…</p>
+                <p role="status">{tr('Searching PixUP…')}</p>
               </div>
             )}
             <div ref={latest} />
           </div>
           <ErrorNotice error={error || configError} />
           <form className="assistant-compose" onSubmit={(event) => void send(event)}>
-            <label htmlFor="assistant-question">Ask a question</label>
+            <label htmlFor="assistant-question">{tr('Ask a question')}</label>
             <textarea
               id="assistant-question"
               ref={input}
@@ -210,13 +221,15 @@ function AssistantChat() {
               rows={3}
               required
               disabled={!!pending}
-              placeholder="Search a card, seller or buyer reference, or ask how something works…"
+              placeholder={tr(
+                'Search a card, seller or buyer reference, or ask how something works…',
+              )}
             />
             <div className="assistant-compose-actions">
               <small>{message.length}/2,000</small>
               <button className="button" disabled={!!pending || !message.trim()}>
                 <Send size={16} />
-                {pending ? 'Searching…' : 'Send message'}
+                {pending ? tr('Searching…') : tr('Send message')}
               </button>
             </div>
           </form>
@@ -229,19 +242,22 @@ function AssistantChat() {
                 onChange={(event) => setUseAI(event.target.checked)}
               />
               <span>
-                Use AI answers. Sends your message, recent chat and public search results to OpenAI.
-                Buyer and order results stay local.
+                {tr(
+                  'Use AI answers. Sends your message, recent chat and public search results to OpenAI. Buyer and order results stay local.',
+                )}
               </span>
             </label>
           ) : (
             <p className="muted">
-              Local search and help are ready. AI answers become available when your administrator
-              connects an AI provider.
+              {tr(
+                'Local search and help are ready. AI answers become available when your administrator connects an AI provider.',
+              )}
             </p>
           )}
           <p className="muted">
-            Chat stays in this page’s memory and clears when you leave or switch accounts. Don’t
-            share passwords or payment details. Check item and order pages for current information.
+            {tr(
+              'Chat stays in this page’s memory and clears when you leave or switch accounts. Don’t share passwords or payment details. Check item and order pages for current information.',
+            )}
           </p>
         </section>
       </div>

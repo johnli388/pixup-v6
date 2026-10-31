@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import { AccessAdministrationPanel } from './identity-access';
 import { CommunityModeration } from './community';
 import { CommercialOperations } from './commercial';
@@ -32,8 +33,6 @@ import {
   ErrorNotice,
   AccountGate,
   Modal,
-  money,
-  date,
 } from './ui';
 
 export function Operations() {
@@ -44,6 +43,8 @@ export function Operations() {
   );
 }
 function OperationsInner() {
+  const { t: tr, money, date, number } = useI18n();
+
   const { user } = useSession();
   const permissions = user?.staff_permissions || [];
   const can = (permission: (typeof permissions)[number]) => permissions.includes(permission);
@@ -86,24 +87,30 @@ function OperationsInner() {
   return (
     <>
       <PageTitle
-        eyebrow="PIXUP OPERATIONS"
-        title="Trust is in the details."
-        description="Review carefully. Record clearly. Keep every chapter connected."
+        eyebrow={tr('PIXUP OPERATIONS')}
+        title={tr('Trust is in the details.')}
+        description={tr('Review carefully. Record clearly. Keep every chapter connected.')}
       >
         <Badge tone="green">
           <ShieldCheck size={14} />
-          Authorized staff workspace
+          {tr('Authorized staff workspace')}
         </Badge>
       </PageTitle>
       {operationsSampleTabs.has(tab) && (
         <div className="notice subtle">
           <Activity size={18} />
           <div>
-            <strong>{sampleMode ? 'Sample operations data' : 'Live operations data'}</strong>
+            <strong>
+              {sampleMode ? tr('Sample operations data') : tr('Live operations data')}
+            </strong>
             <p>
               {sampleMode
-                ? 'Fictional records for exploring the workspace. Sample actions are disabled and nothing is saved.'
-                : 'Showing saved records. Preview sample data to explore typical queues and statuses.'}
+                ? tr(
+                    'Fictional records for exploring the workspace. Sample actions are disabled and nothing is saved.',
+                  )
+                : tr(
+                    'Showing saved records. Preview sample data to explore typical queues and statuses.',
+                  )}
             </p>
             <button
               className="button small secondary"
@@ -112,26 +119,26 @@ function OperationsInner() {
                 setSamplePreference(!sampleMode);
               }}
             >
-              {sampleMode ? 'Show live data' : 'Show sample data'}
+              {sampleMode ? tr('Show live data') : tr('Show sample data')}
             </button>
           </div>
         </div>
       )}
       <div className="stats-grid">
         <Stat
-          label="Intakes awaiting action"
+          label={tr('Intakes awaiting action')}
           value={openIntakes.length}
-          note="Physical receipt and VIA review"
+          note={tr('Physical receipt and VIA review')}
           icon={<Package size={18} />}
         />
         <Stat
-          label="Collections in review"
+          label={tr('Collections in review')}
           value={data.collections.length}
-          note="Rights approval and stock intake"
+          note={tr('Rights approval and stock intake')}
           icon={<ClipboardCheck size={18} />}
         />
         <Stat
-          label="Journal integrity"
+          label={tr('Journal integrity')}
           value={
             data.integrity
               ? data.integrity.unbalanced === 0
@@ -142,7 +149,7 @@ function OperationsInner() {
           note={
             data.integrity
               ? `${data.integrity.pending_events} notifications awaiting dispatch`
-              : 'Finance permission required'
+              : tr('Finance permission required')
           }
           icon={<Activity size={18} />}
         />
@@ -150,7 +157,7 @@ function OperationsInner() {
       <div className="tabs spaced">
         {tabs.map((t) => (
           <button key={t} onClick={() => setTab(t)} className={tab === t ? 'selected' : ''}>
-            {t}
+            {tr(t)}
           </button>
         ))}
       </div>
@@ -165,11 +172,11 @@ function OperationsInner() {
               <table>
                 <thead>
                   <tr>
-                    <th>Collectible / owner</th>
-                    <th>Request</th>
-                    <th>Status</th>
-                    <th>Evidence</th>
-                    <th>Next action</th>
+                    <th>{tr('Collectible / owner')}</th>
+                    <th>{tr('Request')}</th>
+                    <th>{tr('Status')}</th>
+                    <th>{tr('Evidence')}</th>
+                    <th>{tr('Next action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -189,7 +196,7 @@ function OperationsInner() {
                       <td>
                         {i.kind === 'repool'
                           ? `RePool · ${i.offered_credits} credits`
-                          : 'Vault & VIA'}
+                          : tr('Vault & VIA')}
                       </td>
                       <td>
                         <Status status={i.status} />
@@ -207,8 +214,8 @@ function OperationsInner() {
                             }
                           >
                             {data.physical_capture_required && !i.capture_id
-                              ? 'Capture physical identity'
-                              : 'Record receipt'}
+                              ? tr('Capture physical identity')
+                              : tr('Record receipt')}
                           </button>
                         ) : i.status === 'received' &&
                           i.offer_status === 'declined' &&
@@ -218,7 +225,7 @@ function OperationsInner() {
                             className="button small secondary"
                             onClick={() => setModal({ type: 'return', row: i })}
                           >
-                            Record demo return
+                            {tr('Record demo return')}
                           </button>
                         ) : i.status === 'received' && can('via') ? (
                           <div className="button-row">
@@ -229,7 +236,7 @@ function OperationsInner() {
                               className="button small"
                               onClick={() => setModal({ type: 'inspect', row: i })}
                             >
-                              Inspect & decide
+                              {tr('Inspect & decide')}
                             </button>
                             {i.kind === 'repool' && i.offer_status !== 'declined' && (
                               <button
@@ -237,12 +244,12 @@ function OperationsInner() {
                                 className="button small secondary"
                                 onClick={() => setModal({ type: 'reoffer', row: i })}
                               >
-                                Revise offer
+                                {tr('Revise offer')}
                               </button>
                             )}
                           </div>
                         ) : (
-                          <span className="muted">{i.review_note || 'Review complete'}</span>
+                          <span className="muted">{i.review_note || tr('Review complete')}</span>
                         )}
                       </td>
                     </tr>
@@ -252,24 +259,25 @@ function OperationsInner() {
             </div>
           ) : (
             <Empty
-              title="The intake queue is clear."
-              description="Seller vault and RePool requests will appear here."
+              title={tr('The intake queue is clear.')}
+              description={tr('Seller vault and RePool requests will appear here.')}
             />
           )}
           <div className="notice subtle">
             <ShieldCheck size={18} />
             <div>
-              <strong>Certificate correction</strong>
+              <strong>{tr('Certificate correction')}</strong>
               <p>
-                Revocation preserves earlier assessments and withdraws active listings. A pending
-                checkout must be resolved first.
+                {tr(
+                  'Revocation preserves earlier assessments and withdraws active listings. A pending checkout must be resolved first.',
+                )}
               </p>
               <button
                 disabled={sampleMode || !can('via')}
                 className="text-link"
                 onClick={() => setModal({ type: 'revoke', row: {} })}
               >
-                Revoke a certificate →
+                {tr('Revoke a certificate →')}
               </button>
             </div>
           </div>
@@ -287,16 +295,16 @@ function OperationsInner() {
                 <h2>{c.title}</h2>
                 <p>{c.description}</p>
                 <div className="review-evidence">
-                  <small>RIGHTS EVIDENCE</small>
+                  <small>{tr('RIGHTS EVIDENCE')}</small>
                   <p>{c.rights_evidence}</p>
                 </div>
                 <dl className="spec-list">
                   <div>
-                    <dt>Publisher</dt>
+                    <dt>{tr('Publisher')}</dt>
                     <dd>{c.creator_name}</dd>
                   </div>
                   <div>
-                    <dt>Edition cap</dt>
+                    <dt>{tr('Edition cap')}</dt>
                     <dd>{c.edition_size}</dd>
                   </div>
                 </dl>
@@ -311,8 +319,8 @@ function OperationsInner() {
                   }
                 >
                   {c.status === 'submitted'
-                    ? 'Review rights submission'
-                    : 'Receive production stock'}
+                    ? tr('Review rights submission')
+                    : tr('Receive production stock')}
                   <ArrowRight size={16} />
                 </button>
               </article>
@@ -320,8 +328,10 @@ function OperationsInner() {
           </div>
         ) : (
           <Empty
-            title="No collections awaiting action."
-            description="Creator submissions and approved editions awaiting stock will appear here."
+            title={tr('No collections awaiting action.')}
+            description={tr(
+              'Creator submissions and approved editions awaiting stock will appear here.',
+            )}
           />
         ))}
       {tab === 'Fulfillment' &&
@@ -330,11 +340,11 @@ function OperationsInner() {
             <table>
               <thead>
                 <tr>
-                  <th>Collectible</th>
-                  <th>Destination</th>
-                  <th>Status</th>
-                  <th>Tracking</th>
-                  <th>Action</th>
+                  <th>{tr('Collectible')}</th>
+                  <th>{tr('Destination')}</th>
+                  <th>{tr('Status')}</th>
+                  <th>{tr('Tracking')}</th>
+                  <th>{tr('Action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -344,7 +354,9 @@ function OperationsInner() {
                       <strong>{o.title}</strong>
                       <small className="block muted">#{o.id.slice(0, 8)}</small>
                     </td>
-                    <td>{o.fulfillment === 'vault' ? 'Retained in vault' : o.shipping_address}</td>
+                    <td>
+                      {o.fulfillment === 'vault' ? tr('Retained in vault') : o.shipping_address}
+                    </td>
                     <td>
                       <Status status={o.status} />
                     </td>
@@ -361,11 +373,11 @@ function OperationsInner() {
                           }
                         >
                           {data.physical_capture_required || o.tracked
-                            ? 'Open shipment tracking'
-                            : 'Record demo shipment'}
+                            ? tr('Open shipment tracking')
+                            : tr('Record demo shipment')}
                         </button>
                       ) : (
-                        <span className="muted">Complete</span>
+                        <span className="muted">{tr('Complete')}</span>
                       )}
                     </td>
                   </tr>
@@ -375,8 +387,8 @@ function OperationsInner() {
           </div>
         ) : (
           <Empty
-            title="Nothing waiting to ship."
-            description="Confirmed orders will appear here."
+            title={tr('Nothing waiting to ship.')}
+            description={tr('Confirmed orders will appear here.')}
           />
         ))}
       {tab === 'Settlements' &&
@@ -385,11 +397,11 @@ function OperationsInner() {
             <table>
               <thead>
                 <tr>
-                  <th>Collectible</th>
-                  <th>Seller</th>
-                  <th>Proceeds</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th>{tr('Collectible')}</th>
+                  <th>{tr('Seller')}</th>
+                  <th>{tr('Proceeds')}</th>
+                  <th>{tr('Status')}</th>
+                  <th>{tr('Action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -410,13 +422,13 @@ function OperationsInner() {
                           className="button small secondary"
                           onClick={() => setModal({ type: 'release', row: s })}
                         >
-                          Review demo payout
+                          {tr('Review demo payout')}
                         </button>
                       ) : (
                         <span className="muted">
                           {s.payment_provider === 'stripe_test'
-                            ? 'Stripe payouts unavailable'
-                            : 'Recorded'}
+                            ? tr('Stripe payouts unavailable')
+                            : tr('Recorded')}
                         </span>
                       )}
                     </td>
@@ -425,13 +437,13 @@ function OperationsInner() {
               </tbody>
             </table>
             <p className="table-note">
-              Demo payout only. There is no payment-provider or bank connection.
+              {tr('Demo payout only. There is no payment-provider or bank connection.')}
             </p>
           </div>
         ) : (
           <Empty
-            title="No settlements yet."
-            description="Confirmed sales create held seller obligations here."
+            title={tr('No settlements yet.')}
+            description={tr('Confirmed sales create held seller obligations here.')}
           />
         ))}
       {tab === 'Support' &&
@@ -445,7 +457,12 @@ function OperationsInner() {
                 </div>
                 <h2>{c.subject}</h2>
                 <p>{c.body}</p>
-                {c.order_id && <code>Order: {c.order_id}</code>}
+                {c.order_id && (
+                  <code>
+                    {tr('Order: ')}
+                    {c.order_id}
+                  </code>
+                )}
                 {c.response && (
                   <div className="notice">
                     <p>{c.response}</p>
@@ -457,7 +474,7 @@ function OperationsInner() {
                     className="button secondary"
                     onClick={() => setModal({ type: 'resolve', row: c })}
                   >
-                    Respond & resolve
+                    {tr('Respond & resolve')}
                   </button>
                 )}
               </article>
@@ -465,8 +482,8 @@ function OperationsInner() {
           </div>
         ) : (
           <Empty
-            title="No support cases open."
-            description="Collector questions and order disputes will appear here."
+            title={tr('No support cases open.')}
+            description={tr('Collector questions and order disputes will appear here.')}
           />
         ))}
       {tab === 'Privacy' && <PrivacyQueue />}
@@ -482,11 +499,11 @@ function OperationsInner() {
           <div className="notice warning">
             <AlertCircle size={21} />
             <div>
-              <strong>Internal demo reconciliation only</strong>
+              <strong>{tr('Internal demo reconciliation only')}</strong>
               <p>
-                Journal balances do not verify external cash. Stripe test sessions and refunds are
-                reconciled in Payments; bank statements and physical inventory feeds are not
-                connected. USD and credits remain separate units.
+                {tr(
+                  'Journal balances do not verify external cash. Stripe test sessions and refunds are reconciled in Payments; bank statements and physical inventory feeds are not connected. USD and credits remain separate units.',
+                )}
               </p>
             </div>
           </div>
@@ -494,9 +511,9 @@ function OperationsInner() {
             <table>
               <thead>
                 <tr>
-                  <th>Ledger account</th>
-                  <th>Unit</th>
-                  <th>Signed balance</th>
+                  <th>{tr('Ledger account')}</th>
+                  <th>{tr('Unit')}</th>
+                  <th>{tr('Signed balance')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -509,9 +526,7 @@ function OperationsInner() {
                       <Badge>{b.unit}</Badge>
                     </td>
                     <td>
-                      {b.unit === 'USD'
-                        ? money(b.balance)
-                        : `${b.balance.toLocaleString()} credits`}
+                      {b.unit === 'USD' ? money(b.balance) : `${number(Number(b.balance))} credits`}
                     </td>
                   </tr>
                 ))}
@@ -519,8 +534,9 @@ function OperationsInner() {
             </table>
           </div>
           <p className="muted">
-            Positive amounts are debits; negative amounts are credits. Every posted entry must net
-            to zero within its unit.
+            {tr(
+              'Positive amounts are debits; negative amounts are credits. Every posted entry must net to zero within its unit.',
+            )}
           </p>
         </>
       )}
@@ -530,10 +546,10 @@ function OperationsInner() {
             <table>
               <thead>
                 <tr>
-                  <th>Action</th>
-                  <th>Actor</th>
-                  <th>Resource</th>
-                  <th>Date</th>
+                  <th>{tr('Action')}</th>
+                  <th>{tr('Actor')}</th>
+                  <th>{tr('Resource')}</th>
+                  <th>{tr('Date')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -554,8 +570,8 @@ function OperationsInner() {
           </div>
         ) : (
           <Empty
-            title="Your audit trail starts here."
-            description="Operational changes are recorded with actor, resource, and time."
+            title={tr('Your audit trail starts here.')}
+            description={tr('Operational changes are recorded with actor, resource, and time.')}
           />
         ))}
       {!sampleMode && modal && (
@@ -565,6 +581,8 @@ function OperationsInner() {
   );
 }
 function OperationModal({ type, row, onClose }: { type: string; row: Row; onClose: () => void }) {
+  const { t: tr, money } = useI18n();
+
   const action = useAction();
   const [note, setNote] = useState(''),
     [approve, setApprove] = useState(true),
@@ -652,11 +670,16 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
         {type === 'reoffer' && (
           <>
             <p>
-              Previous offer: {row.offered_credits} credits · v{row.offer_version}. The new version
-              expires in seven days and requires explicit owner acceptance.
+              {tr('Previous offer: ')}
+              {row.offered_credits}
+              {tr(' credits · v')}
+              {row.offer_version}
+              {tr(
+                '. The new version expires in seven days and requires explicit owner acceptance.',
+              )}
             </p>
             <label className="field">
-              Revised demo credits
+              {tr('Revised demo credits')}
               <input
                 required
                 type="number"
@@ -671,33 +694,36 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
         )}
         {type === 'return' && (
           <p>
-            Record the simulated physical return. Ownership stays with the owner and no credits are
-            issued. A fresh custody and VIA review is required before listing again.
+            {tr(
+              'Record the simulated physical return. Ownership stays with the owner and no credits are issued. A fresh custody and VIA review is required before listing again.',
+            )}
           </p>
         )}
 
         {['rights', 'inspect'].includes(type) && (
           <label className="field">
-            Decision
+            {tr('Decision')}
             <select
               value={approve ? 'approve' : 'reject'}
               onChange={(e) => setApprove(e.target.value === 'approve')}
             >
               <option value="approve">
-                {type === 'rights' ? 'Approve rights submission' : 'Accept inspection'}
+                {type === 'rights' ? tr('Approve rights submission') : tr('Accept inspection')}
               </option>
               <option value="reject">
-                {type === 'rights' ? 'Request changes' : 'Reject and quarantine'}
+                {type === 'rights' ? tr('Request changes') : tr('Reject and quarantine')}
               </option>
             </select>
           </label>
         )}
         {type === 'inspect' && approve && (
           <label className="field">
-            Condition grade
+            {tr('Condition grade')}
             <select value={grade} onChange={(e) => setGrade(e.target.value)}>
               {['10', '9.5', '9', '8', '7'].map((g) => (
-                <option key={g}>{g}</option>
+                <option key={g} value={g}>
+                  {tr(g)}
+                </option>
               ))}
             </select>
           </label>
@@ -705,7 +731,7 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
         {type === 'stock' && (
           <>
             <label className="field">
-              Specimens physically received
+              {tr('Specimens physically received')}
               <input
                 required
                 type="number"
@@ -716,47 +742,52 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
               />
             </label>
             <p className="muted">
-              Demo batch assessment records each received specimen as grade 10. Production requires
-              individual evidence capture and QC.
+              {tr(
+                'Demo batch assessment records each received specimen as grade 10. Production requires individual evidence capture and QC.',
+              )}
             </p>
           </>
         )}
         {type === 'fulfill' && (
           <label className="field">
-            Demo tracking reference
+            {tr('Demo tracking reference')}
             <input
               required
               minLength={5}
               maxLength={150}
               value={tracking}
               onChange={(e) => setTracking(e.target.value)}
-              placeholder="DEMO-SHIP-0001"
+              placeholder={tr('DEMO-SHIP-0001')}
             />
           </label>
         )}
         {type === 'release' && (
           <div className="notice warning">
-            <strong>{money(row.amount_cents)} · simulated seller proceeds</strong>
+            <strong>
+              {money(row.amount_cents)}
+              {tr(' · simulated seller proceeds')}
+            </strong>
             <p>
-              The order must be fulfilled, with no open support cases. A different finance reviewer
-              must approve this exact amount before a simulated release.
+              {tr(
+                'The order must be fulfilled, with no open support cases. A different finance reviewer must approve this exact amount before a simulated release.',
+              )}
             </p>
           </div>
         )}
         {type === 'revoke' && (
           <label className="field">
-            Collectible ID
+            {tr('Collectible ID')}
             <input
               required
               value={assetId}
               onChange={(e) => setAssetId(e.target.value)}
-              placeholder="ID from the collectible URL"
+              placeholder={tr('ID from the collectible URL')}
             />
           </label>
         )}
         {type !== 'fulfill' && (
           <label className="field">
-            {type === 'resolve' ? 'Response' : 'Evidence & decision notes'}
+            {type === 'resolve' ? tr('Response') : tr('Evidence & decision notes')}
             <textarea
               required
               minLength={10}
@@ -764,13 +795,13 @@ function OperationModal({ type, row, onClose }: { type: string; row: Row; onClos
               rows={4}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Describe the evidence and reason for this action."
+              placeholder={tr('Describe the evidence and reason for this action.')}
             />
           </label>
         )}
         <ErrorNotice error={action.error} />
         <button className="button full" disabled={action.busy}>
-          {action.busy ? 'Recording…' : 'Record decision'}
+          {action.busy ? tr('Recording…') : tr('Record decision')}
           <Check size={17} />
         </button>
       </form>

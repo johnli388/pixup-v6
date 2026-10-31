@@ -12,6 +12,8 @@ The assistant cannot purchase, reserve stock, send messages, change accounts or 
 
 ## AI setup
 
+The sidebar language selector also controls Ask PixUP. Message requests accept `locale` (`en`, `es`, `fr`, `zh-CN`, `ja`, `ko`; default `en`). Suggested prompts, local help/answers and privacy notices are translated, and the local parser recognizes common search vocabulary in each language. Optional AI answers receive the selected locale. Recognized buyer/order searches remain local and scoped to the signed-in participant. See [internationalization](internationalization.md) for coverage and formatting details.
+
 Local search and curated help work without a provider. To enable optional AI answers, add these server-only settings to the root `.env`, using your own API key, then restart the API:
 
 ```dotenv

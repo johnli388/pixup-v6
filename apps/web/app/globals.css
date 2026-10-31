@@ -803,7 +803,7 @@ footer a {
   gap: 8px;
   align-items: center;
   font-size: 11px;
-  color: #6f7e58;
+  color: #5d6c48;
 }
 .product-grid {
   display: grid;
@@ -4167,4 +4167,33 @@ details.panel details {
     margin-inline-start: 4px;
     padding-inline-start: 8px;
   }
+}
+
+/* Locale names remain readable in every supported script and on small screens. */
+.language-selector {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 14px;
+  font-size: 12px;
+}
+.language-selector select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #d9ddd5);
+  border-radius: 8px;
+  color: inherit;
+  background: var(--paper, #fff);
+  font: inherit;
+  font-size: 16px;
+}
+:lang(zh-CN),
+:lang(ja),
+:lang(ko) {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+html:lang(fr) .nav-link,
+html:lang(es) .nav-link {
+  white-space: normal;
 }

@@ -1,17 +1,33 @@
 'use client';
+import { useI18n } from './i18n';
 import { useState } from 'react';
 import { useAction, useData, useSession, type Row } from './providers';
-import { Loading, ErrorNotice, date } from './ui';
+import { Loading, ErrorNotice } from './ui';
 
 const label = (s: string) => s.replaceAll('_', ' ');
 export function CommercialTerms({ snapshot }: { snapshot?: Row | null }) {
+  const { t: tr } = useI18n();
+
   if (!snapshot)
-    return <p className="muted">Historical order: no versioned commercial terms were recorded.</p>;
+    return (
+      <p className="muted">
+        {tr('Historical order: no versioned commercial terms were recorded.')}
+      </p>
+    );
   return (
     <details className="panel">
-      <summary>Local pilot terms · version {snapshot.version}</summary>
-      <p>Minimum age: {snapshot.minimum_age}+. Production launch is not approved.</p>
-      {snapshot.credit_scope === 'disabled' && <p>Credit redemption is paused for this quote.</p>}
+      <summary>
+        {tr('Local pilot terms · version ')}
+        {snapshot.version}
+      </summary>
+      <p>
+        {tr('Minimum age: ')}
+        {snapshot.minimum_age}
+        {tr('+. Production launch is not approved.')}
+      </p>
+      {snapshot.credit_scope === 'disabled' && (
+        <p>{tr('Credit redemption is paused for this quote.')}</p>
+      )}
       <dl className="spec-list">
         {Object.entries(snapshot.terms || {}).map(([topic, value]) => (
           <div key={topic}>
@@ -25,6 +41,8 @@ export function CommercialTerms({ snapshot }: { snapshot?: Row | null }) {
 }
 
 export function CommercialOperations() {
+  const { t: tr, date } = useI18n();
+
   const { data, error, isPending, refetch } = useData<Row>('/ops/commercial');
   const action = useAction();
   const [topic, setTopic] = useState('credit_redemption');
@@ -35,26 +53,29 @@ export function CommercialOperations() {
   if (!data) return <ErrorNotice error={error} />;
   return (
     <section className="panel">
-      <h2>Commercial decisions</h2>
+      <h2>{tr('Commercial decisions')}</h2>
       <p>
-        Version {data.policy.version} · New pilot checkout{' '}
-        {data.policy.new_sales_enabled ? 'open' : 'paused'} · Credits{' '}
-        {data.policy.credit_scope === 'disabled' ? 'paused' : 'PixUP-owned stock only'} · Minimum
-        age {data.minimum_age}+
+        {tr('Version ')}
+        {data.policy.version}
+        {tr(' · New pilot checkout')} {data.policy.new_sales_enabled ? tr('open') : tr('paused')}
+        {tr(' · Credits')}{' '}
+        {data.policy.credit_scope === 'disabled' ? tr('paused') : tr('PixUP-owned stock only')}
+        {tr(' · Minimum age ')}
+        {data.minimum_age}+
       </p>
       <p>
-        Independent finance review records local pilot decisions. Contracts, refund entitlements,
-        taxation and jurisdiction launch approvals remain unresolved with the named owners.
-        Narrative evidence does not change executable terms.
+        {tr(
+          'Independent finance review records local pilot decisions. Contracts, refund entitlements, taxation and jurisdiction launch approvals remain unresolved with the named owners. Narrative evidence does not change executable terms.',
+        )}
       </p>
       <CommercialTerms snapshot={{ ...data.policy, minimum_age: data.minimum_age }} />
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Decision area</th>
-              <th>Owners / planning references</th>
-              <th>Local review</th>
+              <th>{tr('Decision area')}</th>
+              <th>{tr('Owners / planning references')}</th>
+              <th>{tr('Local review')}</th>
             </tr>
           </thead>
           <tbody>
@@ -64,8 +85,8 @@ export function CommercialOperations() {
                 <td>{String(owner)}</td>
                 <td>
                   {data.policy.reviewed_decisions[key]
-                    ? 'Reviewed for pilot; production unresolved'
-                    : 'Awaiting review'}
+                    ? tr('Reviewed for pilot; production unresolved')
+                    : tr('Awaiting review')}
                 </td>
               </tr>
             ))}
@@ -73,7 +94,7 @@ export function CommercialOperations() {
         </table>
       </div>
       <details>
-        <summary>Propose a pilot decision</summary>
+        <summary>{tr('Propose a pilot decision')}</summary>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -90,7 +111,7 @@ export function CommercialOperations() {
           }}
         >
           <label>
-            Decision area
+            {tr('Decision area')}
             <select
               value={topic}
               onChange={(e) => {
@@ -106,27 +127,29 @@ export function CommercialOperations() {
             </select>
           </label>
           <label>
-            Pilot action
+            {tr('Pilot action')}
             <select value={control} onChange={(e) => setControl(e.target.value)}>
-              <option value="record_review">Record review; preserve executable terms</option>
+              <option value="record_review">
+                {tr('Record review; preserve executable terms')}
+              </option>
               {topic === 'credit_redemption' && (
                 <>
-                  <option value="disable_credits">Pause credit redemption</option>
+                  <option value="disable_credits">{tr('Pause credit redemption')}</option>
                   <option value="restore_pilot_credits">
-                    Restore PixUP-owned pilot redemption
+                    {tr('Restore PixUP-owned pilot redemption')}
                   </option>
                 </>
               )}
               {topic === 'jurisdiction_age' && (
                 <>
-                  <option value="pause_sales">Pause new pilot checkout</option>
-                  <option value="resume_pilot_sales">Resume local pilot checkout</option>
+                  <option value="pause_sales">{tr('Pause new pilot checkout')}</option>
+                  <option value="resume_pilot_sales">{tr('Resume local pilot checkout')}</option>
                 </>
               )}
             </select>
           </label>
           <label>
-            Decision statement
+            {tr('Decision statement')}
             <textarea
               required
               minLength={20}
@@ -136,7 +159,7 @@ export function CommercialOperations() {
             />
           </label>
           <label>
-            Evidence reference
+            {tr('Evidence reference')}
             <textarea
               required
               minLength={10}
@@ -146,19 +169,22 @@ export function CommercialOperations() {
             />
           </label>
           <p>
-            Only the selected pilot action can change behavior. Proposals expire after seven days; a
-            newer approved version requires a fresh proposal.
+            {tr(
+              'Only the selected pilot action can change behavior. Proposals expire after seven days; a newer approved version requires a fresh proposal.',
+            )}
           </p>
           <button className="button" disabled={action.busy}>
-            Submit commercial proposal
+            {tr('Submit commercial proposal')}
           </button>
           <ErrorNotice error={action.error} />
         </form>
       </details>
-      <h3>Decision history</h3>
+      <h3>{tr('Decision history')}</h3>
       {data.decisions.length === 0 && (
         <p>
-          No proposals yet. Existing demo terms are preserved without inferring business approval.
+          {tr(
+            'No proposals yet. Existing demo terms are preserved without inferring business approval.',
+          )}
         </p>
       )}
       {data.decisions.map((d: Row) => (
@@ -170,18 +196,21 @@ export function CommercialOperations() {
         />
       ))}
       <details>
-        <summary>Policy version history</summary>
+        <summary>{tr('Policy version history')}</summary>
         {data.versions.map((v: Row) => (
           <div key={v.version}>
             <p>
-              Version {v.version} · {date(v.created_at)}
+              {tr('Version ')}
+              {v.version} · {date(v.created_at)}
             </p>
             <p>
-              New checkout {v.snapshot.new_sales_enabled ? 'open' : 'paused'} · Credit scope{' '}
-              {label(v.snapshot.credit_scope)}
+              {tr('New checkout ')}
+              {v.snapshot.new_sales_enabled ? tr('open') : tr('paused')}
+              {tr(' · Credit scope')} {label(v.snapshot.credit_scope)}
             </p>
             <small>
-              Reviewed decision references: {JSON.stringify(v.snapshot.reviewed_decisions)}
+              {tr('Reviewed decision references: ')}
+              {JSON.stringify(v.snapshot.reviewed_decisions)}
             </small>
           </div>
         ))}
@@ -198,6 +227,8 @@ function CommercialDecision({
   current: number;
   refresh: () => Promise<unknown>;
 }) {
+  const { t: tr, date } = useI18n();
+
   const { user } = useSession();
   const action = useAction();
   const [note, setNote] = useState('');
@@ -216,27 +247,38 @@ function CommercialDecision({
         {label(d.topic)} · {label(d.action)} · {d.state}
       </h4>
       <p>{d.statement}</p>
-      <p>Evidence: {d.evidence}</p>
+      <p>
+        {tr('Evidence: ')}
+        {d.evidence}
+      </p>
       <small>
-        Proposal {d.id} · Base version {d.base_version} · Requester {d.requested_by} · Expires{' '}
-        {date(d.expires_at)}
+        {tr('Proposal ')}
+        {d.id}
+        {tr(' · Base version ')}
+        {d.base_version}
+        {tr(' · Requester ')}
+        {d.requested_by}
+        {tr(' · Expires')} {date(d.expires_at)}
       </small>
       {d.review_note && (
         <p>
-          Reviewer {d.decided_by}: {d.review_note}
+          {tr('Reviewer ')}
+          {d.decided_by}: {d.review_note}
           {d.resulting_version && ` · Resulting version ${d.resulting_version}`}
         </p>
       )}
       {d.state === 'pending' &&
         (d.requested_by === user?.id ? (
-          <p>Another finance reviewer must decide this commercial proposal.</p>
+          <p>{tr('Another finance reviewer must decide this commercial proposal.')}</p>
         ) : (
           <>
             {stale && (
-              <p>This proposal is stale or expired. Reject it and request a new proposal.</p>
+              <p>
+                {tr('This proposal is stale or expired. Reject it and request a new proposal.')}
+              </p>
             )}
             <label>
-              Commercial review note
+              {tr('Commercial review note')}
               <textarea
                 minLength={10}
                 maxLength={2000}
@@ -249,14 +291,14 @@ function CommercialDecision({
               disabled={action.busy || stale || note.trim().length < 10}
               onClick={() => void decide('approve')}
             >
-              Approve local pilot decision
+              {tr('Approve local pilot decision')}
             </button>{' '}
             <button
               className="button secondary"
               disabled={action.busy || note.trim().length < 10}
               onClick={() => void decide('reject')}
             >
-              Reject proposal
+              {tr('Reject proposal')}
             </button>
             <ErrorNotice error={action.error} />
           </>

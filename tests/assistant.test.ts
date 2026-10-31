@@ -12,6 +12,7 @@ import {
 import { assistantInput, assistantResponse } from '../packages/domain/assistant';
 import type { Actor } from '../apps/api/src/auth';
 import { DomainError, id } from '../packages/domain/core';
+import { locales, translate } from '../packages/domain/i18n';
 
 let db: Database, services: Services;
 const actor = (uid: string): Actor => ({
@@ -120,6 +121,68 @@ test('assistant restricts buyers and orders to transaction participants, even fo
       .href,
     `/account/orders/${order.id}`,
   );
+});
+
+test('assistant localizes results and keeps private searches scoped and off AI in every language', async () => {
+  let providerCalls = 0;
+  const assistant = new AssistantService(db, {
+    plan: async () => {
+      providerCalls++;
+      throw new Error('Private searches must not call the provider');
+    },
+    answer: async () => {
+      providerCalls++;
+      return 'Unexpected provider call';
+    },
+  });
+  const quote = await services.commerce.quote(collector, {
+    listing_id: 'listing-idol-01',
+    fulfillment: 'ship',
+  });
+  const order = await services.commerce.checkout(
+    collector,
+    {
+      quote_id: quote.id,
+      shipping_address: 'PRIVATE ADDRESS',
+    },
+    id(),
+  );
+  await services.commerce.pay(collector, order.id, true);
+  for (const locale of locales) {
+    const cards = await assistant.reply(collector, {
+      locale,
+      message: translate(locale, 'Find sports cards under $100'),
+    });
+    assert.ok(cards.results.some((result) => result.title === 'Full Court · Silver Parallel'));
+    assert.ok(cards.results.every((result) => result.price_cents! <= 10000));
+    assert.ok(
+      cards.results.every((result) => result.description.includes(translate(locale, 'Sports'))),
+    );
+    const buyers = await assistant.reply(seller, {
+      locale,
+      message: translate(locale, 'Find buyers from my sales'),
+      use_ai: true,
+    });
+    assert.equal(buyers.mode, 'local');
+    assert.equal(buyers.results.length, 1);
+    assert.equal(buyers.results[0].title, `${translate(locale, 'Buyer')} collector`);
+    assert.equal(buyers.results[0].href, `/account/orders/${order.id}`);
+    assert.ok(!JSON.stringify(buyers).includes('PRIVATE ADDRESS'));
+    assert.equal(
+      buyers.notice,
+      translate(
+        locale,
+        'Only your own transaction records are searched. These results are not sent to AI.',
+      ),
+    );
+    const unrelated = await assistant.reply(actor('creator'), {
+      locale,
+      message: translate(locale, 'Show my orders'),
+      use_ai: true,
+    });
+    assert.equal(unrelated.results.length, 0);
+  }
+  assert.equal(providerCalls, 0);
 });
 
 test('assistant enforces authentication, MFA, privacy restriction and input bounds', async () => {
@@ -322,7 +385,11 @@ test('OpenAI adapter uses bounded Responses requests, validates output, and keep
     });
   };
   const provider = new OpenAIAssistant('test-key', 'test-model', transport);
-  const input = assistantInput.parse({ message: 'Find LUNA under $100', use_ai: true });
+  const input = assistantInput.parse({
+    message: 'Find LUNA under $100',
+    locale: 'ja',
+    use_ai: true,
+  });
   assert.equal((await provider.plan(input)).query, 'LUNA');
   assert.match(await provider.answer(input, [], 'Facts'), /matching/);
   assert.equal(requests[0].store, false);
@@ -330,6 +397,8 @@ test('OpenAI adapter uses bounded Responses requests, validates output, and keep
   assert.equal(requests[0].max_output_tokens, 400);
   assert.equal(requests[1].max_output_tokens, 800);
   assert.equal(requests[0].tools, undefined);
+  assert.equal(JSON.parse(requests[0].input[0].content).locale, 'ja');
+  assert.match(requests[1].instructions, /selected language \(ja\)/);
   assert.deepEqual(new AssistantService(db, provider).config(), { ai_available: true });
   assert.equal(
     assistantConfiguration({ ASSISTANT_PROVIDER: 'local', OPENAI_API_KEY: 'unused' }),

@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from './i18n';
 import {
   createContext,
   useContext,
@@ -86,6 +87,8 @@ async function fetchJSON<T = any>(
   return data;
 }
 function Session({ children }: { children: ReactNode }) {
+  const { t: tr } = useI18n();
+
   const client = useQueryClient();
   const {
     data,
@@ -143,8 +146,8 @@ function Session({ children }: { children: ReactNode }) {
       {message && (
         <div className="toast" role="status">
           <span>✓</span>
-          {message}
-          <button onClick={() => setMessage('')} aria-label="Dismiss notification">
+          {tr(message)}
+          <button onClick={() => setMessage('')} aria-label={tr('Dismiss notification')}>
             ×
           </button>
         </div>
