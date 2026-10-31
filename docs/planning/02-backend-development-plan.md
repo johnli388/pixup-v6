@@ -8,6 +8,8 @@ Implementation baseline reconciled October 30, 2026 through migrations **001–0
 
 ## 0. Business requirements and implementation baseline
 
+Community Hub extension (migration 015): the [Community Hub plan](04-community-hub-development-plan.md) now has a gated member-only text implementation covering topics, posts, stories, comments, profiles, interests, notifications and scoped moderation/appeals. It reuses identity and safe catalog projections while remaining separate from commerce and provenance. See the [pilot runbook](../community-hub.md) for role/MFA setup, privacy behavior, verification and remaining rollout/media work; both rollout flags default off.
+
 Item 1 local increment (migration 014): strict commercial proposal/review APIs now require current, independent finance authority and immutable evidence references. Approval serializes against checkout reservation, advances an immutable policy version and rejects stale or expired proposals. Only pilot credit redemption and new-checkout controls can change executable behavior; the other decision areas remain documentary reviews with unresolved production authority. New quote/order snapshots preserve their original pilot terms and minimum age; historical records are not backfilled. See [contracts and remaining decisions](../commercial-policy.md).
 
 ### Source-to-delivery traceability

@@ -1,5 +1,6 @@
 'use client';
 import { AccessAdministrationPanel } from './identity-access';
+import { CommunityModeration } from './community';
 import { CommercialOperations } from './commercial';
 import { useState } from 'react';
 import {
@@ -19,6 +20,7 @@ import { PricingOperations, TrustOperations } from './price-trust';
 import { BillingOperations, FinanceApprovals } from './saas-inventory';
 import { PaymentOperations } from './payment-operations';
 import { EvidenceWorkspace, LogisticsOperations } from './evidence-logistics';
+import { operationsSamples, operationsSampleTabs } from './operations-samples';
 import {
   PageTitle,
   SectionTitle,
@@ -62,15 +64,22 @@ function OperationsInner() {
           'Commercial',
         ]
       : []),
+    ...(can('community_moderation') ? ['Community'] : []),
     ...(can('identity_admin') ? ['Access'] : []),
     ...(can('support') ? ['Support', 'Privacy'] : []),
     ...(can('audit') ? ['Audit', 'Monitoring', 'Signatures'] : []),
   ];
-  const { data, error, isPending } = useData('/ops');
+  const { data: liveData, error, isPending } = useData('/ops');
+  const [samplePreference, setSamplePreference] = useState<boolean | null>(null);
   const [tab, setTab] = useState(tabs.includes('Intakes') ? 'Intakes' : tabs[0] || ''),
     [modal, setModal] = useState<{ type: string; row: Row } | null>(null);
   if (isPending) return <Loading />;
   if (error) return <ErrorNotice error={error} />;
+  const emptyWorkspace = ['intakes', 'collections', 'orders', 'settlements', 'cases'].every(
+    (queue) => liveData[queue].length === 0,
+  );
+  const sampleMode = (samplePreference ?? emptyWorkspace) && operationsSampleTabs.has(tab);
+  const data = sampleMode ? operationsSamples(permissions) : liveData;
   const openIntakes = data.intakes.filter((i: Row) =>
     ['awaiting_receipt', 'received'].includes(i.status),
   );
@@ -86,6 +95,28 @@ function OperationsInner() {
           Authorized staff workspace
         </Badge>
       </PageTitle>
+      {operationsSampleTabs.has(tab) && (
+        <div className="notice subtle">
+          <Activity size={18} />
+          <div>
+            <strong>{sampleMode ? 'Sample operations data' : 'Live operations data'}</strong>
+            <p>
+              {sampleMode
+                ? 'Fictional records for exploring the workspace. Sample actions are disabled and nothing is saved.'
+                : 'Showing saved records. Preview sample data to explore typical queues and statuses.'}
+            </p>
+            <button
+              className="button small secondary"
+              onClick={() => {
+                setModal(null);
+                setSamplePreference(!sampleMode);
+              }}
+            >
+              {sampleMode ? 'Show live data' : 'Show sample data'}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="stats-grid">
         <Stat
           label="Intakes awaiting action"
@@ -124,6 +155,7 @@ function OperationsInner() {
         ))}
       </div>
       {tab === 'Evidence' && <EvidenceWorkspace />}
+      {tab === 'Community' && <CommunityModeration />}
       {tab === 'Commercial' && <CommercialOperations />}
       {tab === 'Physical handling' && <LogisticsOperations />}
       {tab === 'Intakes' && (
@@ -166,6 +198,7 @@ function OperationsInner() {
                       <td>
                         {i.status === 'awaiting_receipt' && can('warehouse') ? (
                           <button
+                            disabled={sampleMode}
                             className="button small secondary"
                             onClick={() =>
                               data.physical_capture_required && !i.capture_id
@@ -181,6 +214,7 @@ function OperationsInner() {
                           i.offer_status === 'declined' &&
                           can('warehouse') ? (
                           <button
+                            disabled={sampleMode}
                             className="button small secondary"
                             onClick={() => setModal({ type: 'return', row: i })}
                           >
@@ -189,7 +223,9 @@ function OperationsInner() {
                         ) : i.status === 'received' && can('via') ? (
                           <div className="button-row">
                             <button
-                              disabled={i.kind === 'repool' && i.offer_status !== 'accepted'}
+                              disabled={
+                                sampleMode || (i.kind === 'repool' && i.offer_status !== 'accepted')
+                              }
                               className="button small"
                               onClick={() => setModal({ type: 'inspect', row: i })}
                             >
@@ -197,6 +233,7 @@ function OperationsInner() {
                             </button>
                             {i.kind === 'repool' && i.offer_status !== 'declined' && (
                               <button
+                                disabled={sampleMode}
                                 className="button small secondary"
                                 onClick={() => setModal({ type: 'reoffer', row: i })}
                               >
@@ -228,7 +265,7 @@ function OperationsInner() {
                 checkout must be resolved first.
               </p>
               <button
-                disabled={!can('via')}
+                disabled={sampleMode || !can('via')}
                 className="text-link"
                 onClick={() => setModal({ type: 'revoke', row: {} })}
               >
@@ -266,7 +303,8 @@ function OperationsInner() {
                 <button
                   className="button secondary full"
                   disabled={
-                    c.status === 'submitted' ? !can('rights') : !(can('warehouse') && can('via'))
+                    sampleMode ||
+                    (c.status === 'submitted' ? !can('rights') : !(can('warehouse') && can('via')))
                   }
                   onClick={() =>
                     setModal({ type: c.status === 'submitted' ? 'rights' : 'stock', row: c })
@@ -314,6 +352,7 @@ function OperationsInner() {
                     <td>
                       {o.status === 'paid' && o.fulfillment === 'ship' ? (
                         <button
+                          disabled={sampleMode}
                           className="button small"
                           onClick={() =>
                             data.physical_capture_required || o.tracked
@@ -367,6 +406,7 @@ function OperationsInner() {
                     <td>
                       {s.status === 'held' && s.payment_provider === 'demo' ? (
                         <button
+                          disabled={sampleMode}
                           className="button small secondary"
                           onClick={() => setModal({ type: 'release', row: s })}
                         >
@@ -413,6 +453,7 @@ function OperationsInner() {
                 )}
                 {c.status === 'open' && (
                   <button
+                    disabled={sampleMode}
                     className="button secondary"
                     onClick={() => setModal({ type: 'resolve', row: c })}
                   >
@@ -517,7 +558,9 @@ function OperationsInner() {
             description="Operational changes are recorded with actor, resource, and time."
           />
         ))}
-      {modal && <OperationModal type={modal.type} row={modal.row} onClose={() => setModal(null)} />}
+      {!sampleMode && modal && (
+        <OperationModal type={modal.type} row={modal.row} onClose={() => setModal(null)} />
+      )}
     </>
   );
 }

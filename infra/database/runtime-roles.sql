@@ -18,3 +18,10 @@ GRANT EXECUTE ON FUNCTION pixup_member(text,text[]),pixup_staff(),pixup_email(),
 -- role administration, BYPASSRLS or schema ownership is granted to these roles.
 -- Grant exactly one of these group roles to each separately provisioned LOGIN.
 -- Never grant the worker or migration-owner role to the API LOGIN.
+
+GRANT EXECUTE ON FUNCTION community_member(),community_moderator(),community_visible(text),community_owns(text),community_like_count(text) TO pixup_runtime,pixup_worker;
+REVOKE UPDATE,DELETE ON community_actions FROM pixup_runtime,pixup_worker;
+GRANT EXECUTE ON FUNCTION community_close(text) TO pixup_runtime;
+
+GRANT EXECUTE ON FUNCTION community_lock_entry(text) TO pixup_runtime;
+GRANT EXECUTE ON FUNCTION community_lock_topic(text) TO pixup_runtime;

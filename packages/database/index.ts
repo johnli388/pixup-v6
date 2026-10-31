@@ -87,6 +87,7 @@ export async function migrate(db: Database) {
       ['012', '012-payment-controls.sql'],
       ['013', '013-identity-access.sql'],
       ['014', '014-commercial-policy.sql'],
+      ['015', '015-community-hub.sql'],
     ]) {
       const found = await tx.query('SELECT version FROM migrations WHERE version=$1', [version]);
       if (!found.rows.length) {

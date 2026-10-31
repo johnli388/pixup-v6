@@ -85,6 +85,7 @@ export const staffPermissions = [
   'support',
   'audit',
   'identity_admin',
+  'community_moderation',
 ] as const;
 export type StaffPermission = (typeof staffPermissions)[number];
 export const apiErrorSchema = z.object({

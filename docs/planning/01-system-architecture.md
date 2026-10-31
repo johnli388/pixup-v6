@@ -6,6 +6,8 @@ Implementation baseline reconciled October 30, 2026 through migrations **001–0
 
 ## 0. Implemented baseline and PDF-driven changes
 
+Community Hub extension (migration 015): the [Community Hub plan](04-community-hub-development-plan.md) now has a gated member-only text implementation covering topics, posts, stories, comments, profiles, interests, notifications and scoped moderation/appeals. It reuses identity and safe catalog projections while remaining separate from commerce and provenance. See the [pilot runbook](../community-hub.md) for role/MFA setup, privacy behavior, verification and remaining rollout/media work; both rollout flags default off.
+
 Item 1 local increment (migration 014): a versioned seven-topic commercial register now separates documentary local reviews from executable pilot controls. Independent current finance reviewers can pause/restore PixUP-owned credit redemption or new checkout. Shared transaction-core locking and immutable quote/order snapshots prevent approval races and retroactive terms changes. Demo economics and the 18+ baseline remain; production contracts, taxation and jurisdiction approvals are unresolved. See [implementation and boundaries](../commercial-policy.md).
 
 This is an incremental target architecture. The existing source already implements a local lifecycle pilot; the deployment diagram below describes the production target, not provisioned infrastructure.

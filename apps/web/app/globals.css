@@ -3868,3 +3868,70 @@ details.panel details {
 .profile .avatar {
   color: #4e5f3e;
 }
+
+/* Community text remains literal and wraps safely at narrow widths. */
+.community {
+  max-width: 1100px;
+  margin-inline: auto;
+}
+.community-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-block: 16px;
+}
+.community-actions > * {
+  max-width: 100%;
+}
+.community-actions [aria-current='page'] {
+  font-weight: 800;
+  text-decoration: underline;
+}
+.community-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.community-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+.community .panel {
+  margin-block: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.community form label {
+  display: block;
+  margin-block: 12px;
+}
+.community input:not([type='checkbox']),
+.community textarea,
+.community select {
+  max-width: 100%;
+}
+.community fieldset {
+  border: 1px solid #d6d9de;
+  border-radius: 8px;
+  padding: 12px;
+}
+.community-comment {
+  border-top: 1px solid #d6d9de;
+  padding-block: 16px;
+}
+.community-reply {
+  margin-inline-start: 16px;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid #d6d9de;
+}
+@media (max-width: 600px) {
+  .community-actions {
+    gap: 10px;
+  }
+  .community-reply {
+    margin-inline-start: 4px;
+    padding-inline-start: 8px;
+  }
+}

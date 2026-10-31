@@ -4,6 +4,8 @@ This increment implements the B11/B12 and F5 **local pilot contracts** for CVM, 
 
 ## Start and activate
 
+The Channels directory includes three display-only California pilot concepts: Arts District Collect Station (CVM, Los Angeles), Santa Monica Live Collect (LiveUP, Los Angeles area), and SoMa Collector Circle (GOUP, San Francisco). Each has a preview detail page. These are fictional locations with no confirmed venue, schedule, operator or inventory; they do not enable gates or create purchasable channels. Activated channels appear separately under **Available channels**.
+
 Run `npm run dev`. Startup applies migration `007-channels.sql`; existing orders retain `channel=web`. The migration adds exclusively held channel allocations, separate physical fulfillment states, device identities/commands/events/returns, sealed stock and pack lineage, participant pledges, business approval, return requests and scoped tool credentials. All five activation gates start **disabled**.
 
 1. Sign in as `ops@pixup.demo` with the existing demo password and open **Workspace → Channel workspace** (`/workspace/channels`).

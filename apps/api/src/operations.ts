@@ -801,7 +801,7 @@ export class OperationsService {
       await lockChannels(tx);
       const events = (
         await tx.query(
-          'SELECT * FROM outbox WHERE processed_at IS NULL ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED',
+          "SELECT * FROM outbox WHERE processed_at IS NULL AND type<>'community_notification' ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED",
         )
       ).rows;
       for (const e of events) {

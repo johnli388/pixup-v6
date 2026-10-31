@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAction, useData, useSession, type Row } from './providers';
 import { AccountGate, ErrorNotice, Loading, PageTitle, Status, money, Empty } from './ui';
+import { pilotChannels } from './channel-samples';
+import { PilotChannelDetail, PilotChannelDirectory } from './channel-pilot-preview';
 
 type Field = {
   name: string;
@@ -76,6 +78,8 @@ const evidence: Field = {
   type: 'textarea',
 };
 export function Channels({ id }: { id?: string }) {
+  const pilot = pilotChannels.find((channel) => channel.id === id);
+  if (pilot) return <PilotChannelDetail channel={pilot} />;
   return id ? <ChannelDetail id={id} /> : <ChannelDirectory />;
 }
 function ChannelDirectory() {
@@ -89,6 +93,7 @@ function ChannelDirectory() {
         description="Explore local pilot channels. Each purchase uses the same inventory, order and payment records."
       />
       <ErrorNotice error={error} />
+      {!!data?.length && <h2>Available channels</h2>}
       <div className="channel-grid">
         {data?.map((c) => (
           <Link className="panel channel-card" href={`/channels/${c.id}`} key={c.id}>
@@ -103,12 +108,7 @@ function ChannelDirectory() {
           </Link>
         ))}
       </div>
-      {data?.length === 0 && (
-        <Empty
-          title="Pilot channels are being prepared"
-          description="Channels appear after staff records the activation evidence and an operator creates a session."
-        />
-      )}
+      <PilotChannelDirectory />
     </>
   );
 }

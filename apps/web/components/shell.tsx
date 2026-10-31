@@ -28,6 +28,7 @@ const main = [
   ['/marketplace', 'Marketplace', Store],
   ['/collections', 'Collections', Layers],
   ['/channels', 'Channels', Store],
+  ['/community', 'Community Hub', Activity],
 ] as const;
 const personal = [
   ['/account/collection', 'My collection', Layers],

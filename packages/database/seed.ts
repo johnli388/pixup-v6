@@ -30,7 +30,9 @@ export async function seed(db: Database) {
         `${uid}-org`,
       ]);
       if (staff)
-        for (const permission of staffPermissions.filter((p) => p !== 'identity_admin'))
+        for (const permission of staffPermissions.filter(
+          (p) => p !== 'identity_admin' && p !== 'community_moderation',
+        ))
           await tx.query('INSERT INTO staff_permissions(user_id,permission) VALUES ($1,$2)', [
             uid,
             permission,

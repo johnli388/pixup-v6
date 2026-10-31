@@ -1,3 +1,4 @@
+import { communityWorker } from './community';
 import { identityConfiguration } from './identity-providers';
 import { assertRuntimeRole } from '../../../packages/database/context';
 import 'dotenv/config';
@@ -31,9 +32,9 @@ if (hardened) {
       'Hardened database mode requires separate API/worker URLs, pre-applied migrations and SEED_DEMO=false.',
     );
   await assertRuntimeRole(db, false);
-  const v = await db.query("SELECT version FROM migrations WHERE version='014'");
+  const v = await db.query("SELECT version FROM migrations WHERE version='015'");
   if (!v.rows.length)
-    throw new Error('Apply migration 014 with the migration role before starting.');
+    throw new Error('Apply migration 015 with the migration role before starting.');
 } else await migrate(db);
 if (process.env.SEED_DEMO !== 'false') await seed(db);
 const identityOptions = identityConfiguration();
@@ -66,6 +67,7 @@ const timer = setInterval(async () => {
     for (const [name, task] of [
       ['reservations', () => workers.commerce.expire()],
       ['notifications', () => workers.operations.worker()],
+      ['community', () => communityWorker(workers.db)],
       ['payments', () => workers.payments.worker()],
       ['channels', () => workers.channels.worker()],
       ['billing', () => workers.billing.worker()],

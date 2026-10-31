@@ -27,7 +27,7 @@ export function contextualDatabase(base: Database): Database {
 export async function assertRuntimeRole(db: Database, worker: boolean) {
   const policies = (
     await db.query(
-      "SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('collections','organization_invitations','owner_transfers') AND c.relrowsecurity",
+      "SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('collections','organization_invitations','owner_transfers','community_entries','community_reports','community_revisions') AND c.relrowsecurity",
     )
   ).rows[0];
   const privilege = (
@@ -35,7 +35,7 @@ export async function assertRuntimeRole(db: Database, worker: boolean) {
       "SELECT has_schema_privilege(current_user,'public','CREATE') AS schema_create,has_table_privilege(current_user,'journal_lines','TRUNCATE') AS truncate_journal",
     )
   ).rows[0];
-  if (policies?.n !== 3 || privilege?.schema_create || privilege?.truncate_journal)
+  if (policies?.n !== 6 || privilege?.schema_create || privilege?.truncate_journal)
     throw new Error('Runtime policies or DDL privileges are not configured safely.');
   const r = (
     await db.query(

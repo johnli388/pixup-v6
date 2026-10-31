@@ -97,6 +97,10 @@ npm run stripe:controls-check # Validate test partial/remaining refunds and cano
 
 Item 1 adds **Operations → Commercial**, with seven decision areas, immutable proposals and policy versions, independent finance reviews, and controls to pause/restore pilot checkout or PixUP-owned credit redemption. Quotes and orders retain their original commercial snapshots. Existing demo terms and the 18+ baseline are preserved; production commercial decisions remain unresolved. See the [commercial policy runbook](docs/commercial-policy.md).
 
+## Community Hub
+
+Community Hub adds member discussions, stories, knowledge sharing, topics, comments, private saves and moderated reports/appeals. Open `/community`; the text pilot defaults off. Run `COMMUNITY_ENABLED=true COMMUNITY_WRITES_ENABLED=true npm run dev` after provisioning scoped MFA moderators. Migration 015 is additive; demo staff receive no automatic moderation grant. See [setup, workflows, privacy and rollout limits](docs/community-hub.md).
+
 ## Channel pilots and scoped discovery tools
 
 Open **Workspace → Channel workspace** to enable pilot gates, register sealed stock, allocate existing listings and manage CVM/LiveUP fulfillment. CVM and LiveUP activate first; GOUP/WaxUP follow, then scoped Query/Match/Route. All gates start disabled and require staff evidence. Buyers use `/channels` and the existing quote/order/payment flow.

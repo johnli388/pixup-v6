@@ -19,11 +19,13 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'node --import tsx apps/api/src/main.ts',
+      command: 'node --import tsx tests/fixtures/community-browser-server.ts',
       url: 'http://127.0.0.1:4100/v1/health',
       reuseExistingServer: false,
       env: {
         PORT: '4100',
+        COMMUNITY_ENABLED: 'true',
+        COMMUNITY_WRITES_ENABLED: 'true',
         DATA_DIR: dataDir,
         APP_MODE: 'demo',
         IDENTITY_ENCRYPTION_KEY: 'ab'.repeat(32),

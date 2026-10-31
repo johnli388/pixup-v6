@@ -1,3 +1,5 @@
+import { CommunityService } from './community';
+import * as community from '../../../packages/domain/community';
 import { staffPermissions } from '../../../packages/domain/contracts';
 import { withDatabaseActor } from '../../../packages/database/context';
 import { IdentityService } from './identity';
@@ -151,6 +153,7 @@ const support = z
   .strict();
 
 export class Services {
+  community: CommunityService;
   commercial: CommercialService;
   identity: IdentityService;
   access: AccessAdministration;
@@ -183,6 +186,7 @@ export class Services {
     identityOptions: IdentityOptions = {},
   ) {
     privacyPolicy();
+    this.community = new CommunityService(db);
     this.commercial = new CommercialService(db);
     this.billing = new BillingService(db, billingOptions);
     this.finance = new FinanceService(db, (actor, aid, kind) =>
@@ -496,7 +500,7 @@ export function createApp(s: Services) {
     z
       .object({
         user_id: text(),
-        permissions: z.array(z.enum(staffPermissions)).max(7),
+        permissions: z.array(z.enum(staffPermissions)).max(staffPermissions.length),
         reason: text(10, 2000),
       })
       .strict(),
@@ -546,6 +550,114 @@ export function createApp(s: Services) {
       );
     }
   });
+  route('get', '/community/config', () => s.community.config());
+  route('get', '/community/me', (r) => s.community.me(user(r)));
+  route(
+    'post',
+    '/community/me/profile',
+    (r, _res, d) => s.community.profile(user(r), d),
+    community.communityProfileInput,
+  );
+  route(
+    'post',
+    '/community/guidelines/accept',
+    (r, _res, d) => s.community.accept(user(r), d),
+    community.communityAcceptInput,
+  );
+  route('get', '/community/topics', (r) => s.community.topics(user(r)));
+  route(
+    'post',
+    '/community/topic-suggestions',
+    (r, _res, d) => s.community.suggestion(user(r), d),
+    community.communitySuggestionInput,
+  );
+  route('get', '/community/profiles/:id', (r) => s.community.member(user(r), param(r)));
+  route('get', '/community/posts', (r) => s.community.feed(user(r), r.query));
+  route('get', '/community/posts/:id', (r) => s.community.detail(user(r), param(r)));
+  route(
+    'post',
+    '/community/posts',
+    (r, _res, d) => s.community.create(user(r), d, r.get('Idempotency-Key') || ''),
+    community.communityPostInput,
+  );
+  route(
+    'post',
+    '/community/posts/:id/edit',
+    (r, _res, d) => s.community.edit(user(r), param(r), d),
+    community.communityEditInput,
+  );
+  route(
+    'post',
+    '/community/posts/:id/publish',
+    (r, _res, d) => s.community.publish(user(r), param(r), d),
+    community.communityVersionInput,
+  );
+  route(
+    'post',
+    '/community/posts/:id/delete',
+    (r, _res, d) => s.community.remove(user(r), param(r), d),
+    community.communityVersionInput,
+  );
+  route('get', '/community/posts/:id/comments', (r) =>
+    s.community.comments(user(r), param(r), r.query.cursor || ''),
+  );
+  route(
+    'post',
+    '/community/posts/:id/comments',
+    (r, _res, d) => s.community.comment(user(r), param(r), d, r.get('Idempotency-Key') || ''),
+    community.communityCommentInput,
+  );
+  route(
+    'post',
+    '/community/comments/:id/edit',
+    (r, _res, d) => s.community.edit(user(r), param(r), d, true),
+    community.communityCommentEditInput,
+  );
+  route(
+    'post',
+    '/community/comments/:id/delete',
+    (r, _res, d) => s.community.remove(user(r), param(r), d),
+    community.communityVersionInput,
+  );
+  route(
+    'post',
+    '/community/relations',
+    (r, _res, d) => s.community.relation(user(r), d),
+    community.communityRelationInput,
+  );
+  route('get', '/community/me/recovery', (r) => s.community.recovery(user(r)));
+  route('get', '/community/me/notifications', (r) => s.community.notifications(user(r)));
+  route(
+    'post',
+    '/community/reports',
+    (r, _res, d) => s.community.report(user(r), d),
+    community.communityReportInput,
+  );
+  route(
+    'post',
+    '/community/appeals',
+    (r, _res, d) => s.community.appeal(user(r), d),
+    community.communityAppealInput,
+  );
+  route('get', '/ops/community', (r) => s.community.queue(user(r)));
+  route(
+    'post',
+    '/ops/community/topics',
+    (r, _res, d) => s.community.topic(user(r), d),
+    community.communityTopicInput,
+  );
+  route(
+    'post',
+    '/ops/community/entries/:id',
+    (r, _res, d) => s.community.decide(user(r), param(r), d),
+    community.communityDecisionInput,
+  );
+  route(
+    'post',
+    '/ops/community/appeals/:id',
+    (r, _res, d) => s.community.decideAppeal(user(r), param(r), d),
+    community.communityAppealDecisionInput,
+  );
   route('get', '/privacy/policy', () => privacyPolicy());
   route('get', '/billing/plans', (r) => s.billing.plans(user(r)));
   route('get', '/billing/accounts/:org', (r) => s.billing.account(user(r), param(r, 'org')));
@@ -1319,6 +1431,7 @@ export function createApp(s: Services) {
         field_errors: error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
         correlation_id: correlation,
       });
+    if (error instanceof DomainError && error.status === 429) res.set('Retry-After', '3600');
     if (error instanceof DomainError)
       return res
         .status(error.status)

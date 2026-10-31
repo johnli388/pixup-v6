@@ -85,11 +85,13 @@ export class MonitoringService {
       ['/v1/auth/login', '/v1/auth/register'].includes(req.path) ||
       (req.method === 'POST' && req.path.startsWith('/v1/identity/'))
         ? 'auth'
-        : req.path.startsWith('/v1/devices/')
-          ? 'device'
-          : ['/v1/webhooks/stripe', '/v1/webhooks/billing'].includes(req.path)
-            ? 'webhook'
-            : 'api';
+        : req.path.startsWith('/v1/community') && req.method === 'POST'
+          ? 'community'
+          : req.path.startsWith('/v1/devices/')
+            ? 'device'
+            : ['/v1/webhooks/stripe', '/v1/webhooks/billing'].includes(req.path)
+              ? 'webhook'
+              : 'api';
     const now = Date.now(),
       key = `${req.ip}:${family}`;
     let limit = this.limits.get(key);
@@ -106,7 +108,10 @@ export class MonitoringService {
       limit = { count: 0, reset: now + 60000 };
       this.limits.set(key, limit);
     }
-    if (++limit.count > (family === 'auth' ? 30 : family === 'webhook' ? 600 : 1000)) {
+    if (
+      ++limit.count >
+      (family === 'auth' ? 30 : family === 'community' ? 120 : family === 'webhook' ? 600 : 1000)
+    ) {
       res.set('Retry-After', String(Math.ceil((limit.reset - now) / 1000)));
       res
         .status(429)

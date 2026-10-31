@@ -1,3 +1,4 @@
+import { verifyCommunityPostgres } from '../tests/fixtures/community-postgres';
 import assert from 'node:assert/strict';
 import { withDatabaseActor, assertRuntimeRole } from '../packages/database/context';
 import { readFile } from 'node:fs/promises';
@@ -68,7 +69,7 @@ try {
   );
   await migrate(db);
   await migrate(db);
-  assert.equal((await one(db, 'SELECT count(*)::int AS n FROM migrations'))!.n, 14);
+  assert.equal((await one(db, 'SELECT count(*)::int AS n FROM migrations'))!.n, 15);
   assert.deepEqual(
     await one(
       db,
@@ -558,6 +559,7 @@ try {
     roleWorker = await openDatabase(workerUrl.href);
   try {
     await assertRuntimeRole(apiDb, false);
+    await verifyCommunityPostgres(db, apiDb, roleWorker);
     await assertRuntimeRole(roleWorker, true);
     await assert.rejects(assertRuntimeRole(roleWorker, false));
     await assert.rejects(assertRuntimeRole(db, false));
@@ -706,7 +708,7 @@ try {
     await roleWorker.close();
   }
   console.log(
-    'PostgreSQL migrations 001–014, transaction/payment recovery, separate runtime/worker roles, denied DDL/TRUNCATE, tenant read/write isolation and pooled context reset passed.',
+    'PostgreSQL migrations 001–015, transaction/payment recovery, separate runtime/worker roles, denied DDL/TRUNCATE, tenant read/write isolation and pooled context reset passed.',
   );
 } finally {
   await db.close();

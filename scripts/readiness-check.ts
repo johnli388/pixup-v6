@@ -1,3 +1,5 @@
+import { CommunityService } from '../apps/api/src/community';
+import { communityGuidelinesVersion } from '../packages/domain/community';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, writeFile } from 'node:fs/promises';
@@ -290,6 +292,28 @@ try {
   );
   await new Promise<void>((r) => server!.close(() => r()));
   server = undefined;
+  const community = new CommunityService(db, { enabled: true, writes: true });
+  const communityActor = clients[0].actor;
+  await community.profile(communityActor, {
+    display_name: 'Restore drill member',
+    bio: 'Private synthetic profile',
+    reply_notifications: true,
+  });
+  await community.accept(communityActor, { version: communityGuidelinesVersion, accepted: true });
+  const draftInput = {
+    type: 'story',
+    title: 'Private restoration fixture',
+    body: 'Draft body must survive encrypted restoration.',
+    topics: ['beginners'],
+    asset_ids: [],
+  };
+  const communityDraft = await community.create(communityActor, draftInput, id());
+  await community.edit(communityActor, communityDraft.id, {
+    ...draftInput,
+    body: 'Latest private revision after editing.',
+    version: 1,
+  });
+  await community.relation(communityActor, { kind: 'follow', target: 'beginners', enabled: true });
   const oldKey = process.env.PIXUP_BACKUP_KEY;
   process.env.PIXUP_BACKUP_KEY = randomBytes(32).toString('base64');
   const backupPath = join(directory, 'drill.pxb');
@@ -313,6 +337,14 @@ try {
   );
   await assert.rejects(restoreDatabase(target, backupPath), /empty disposable/);
   const recovered = new Services(restored, { provider });
+  const restoredCommunity = new CommunityService(restored, { enabled: true, writes: true });
+  assert.equal(
+    (await restoredCommunity.detail(communityActor, communityDraft.id)).body,
+    'Latest private revision after editing.',
+  );
+  const communityExport = (await recovered.privacy.export(communityActor)).community;
+  assert.equal(communityExport.revisions[0].body, draftInput.body);
+  assert(communityExport.preferences.some((r) => r.kind === 'follow' && r.target === 'beginners'));
   await recovered.operations.worker();
   await recovered.operations.worker();
   assert.equal(

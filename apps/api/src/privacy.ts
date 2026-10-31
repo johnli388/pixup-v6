@@ -1,3 +1,5 @@
+import { withDatabaseActor } from '../../../packages/database/context';
+import { exportCommunity } from './community';
 import { randomBytes } from 'node:crypto';
 import { one, type Database } from '../../../packages/database/index';
 import { audit, check, id } from '../../../packages/domain/core';
@@ -119,6 +121,7 @@ export class PrivacyService {
     );
     return this.db.transaction(async (tx) => {
       await lockChannels(tx);
+      await tx.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [actor.id]);
       const old = await one(
         tx,
         "SELECT id FROM privacy_requests WHERE user_id=$1 AND kind=$2 AND status='open'",
@@ -198,7 +201,7 @@ export class PrivacyService {
       return {
         generated_at: new Date().toISOString(),
         scope:
-          'Account profile, consent history, owned stock, orders, credits, privacy requests and own evidence metadata. Original files require scoped download or support-assisted export and third-party redaction.',
+          'Account profile, consent history, owned stock, orders, credits, privacy requests, own community data and own evidence metadata. Original files require scoped download or support-assisted export and third-party redaction.',
         user,
         orders,
         consents,
@@ -206,6 +209,7 @@ export class PrivacyService {
         credits,
         requests,
         evidence,
+        community: await exportCommunity(tx, actor.id),
         identities: (
           await tx.query('SELECT issuer,created_at FROM managed_identities WHERE user_id=$1', [
             actor.id,
@@ -238,30 +242,31 @@ export class PrivacyService {
   ) {
     requireStaff(actor, 'support');
     const erasedPassword = await passwordHash(randomBytes(32).toString('hex'));
-    return this.db.transaction(async (tx) => {
-      await lockChannels(tx);
-      const r = await one(tx, 'SELECT * FROM privacy_requests WHERE id=$1 FOR UPDATE', [rid]);
-      check(r?.status === 'open', 'INVALID_STATE', 'Request no longer awaits review.');
-      check(
-        r.user_id !== actor.id,
-        'SELF_REVIEW',
-        'Another support reviewer must decide this request.',
-        403,
-      );
-      if (action === 'restore_access') {
+    return withDatabaseActor(actor.id, () =>
+      this.db.transaction(async (tx) => {
+        await lockChannels(tx);
+        const r = await one(tx, 'SELECT * FROM privacy_requests WHERE id=$1 FOR UPDATE', [rid]);
+        check(r?.status === 'open', 'INVALID_STATE', 'Request no longer awaits review.');
         check(
-          r.kind === 'age_review' || r.kind === 'restrict',
-          'REQUEST_KIND',
-          'Use a review request to restore access.',
+          r.user_id !== actor.id,
+          'SELF_REVIEW',
+          'Another support reviewer must decide this request.',
+          403,
         );
-        await tx.query(
-          'UPDATE privacy_profiles SET restriction=NULL,age_attested_at=NULL,updated_at=now() WHERE user_id=$1',
-          [r.user_id],
-        );
-      } else if (action === 'complete' && r.kind === 'delete') {
-        const retained = await one(
-          tx,
-          `SELECT
+        if (action === 'restore_access') {
+          check(
+            r.kind === 'age_review' || r.kind === 'restrict',
+            'REQUEST_KIND',
+            'Use a review request to restore access.',
+          );
+          await tx.query(
+            'UPDATE privacy_profiles SET restriction=NULL,age_attested_at=NULL,updated_at=now() WHERE user_id=$1',
+            [r.user_id],
+          );
+        } else if (action === 'complete' && r.kind === 'delete') {
+          const retained = await one(
+            tx,
+            `SELECT
      EXISTS(SELECT 1 FROM orders WHERE buyer_id=$1 OR seller_id=$1) OR EXISTS(SELECT 1 FROM assets WHERE owner_id=$1) OR
      EXISTS(SELECT 1 FROM intakes WHERE user_id=$1) OR EXISTS(SELECT 1 FROM support_cases WHERE user_id=$1) OR
      EXISTS(SELECT 1 FROM stored_files WHERE owner_id=$1 AND state<>'purged') OR
@@ -271,60 +276,72 @@ export class PrivacyService {
      EXISTS(SELECT 1 FROM memberships m JOIN collections c ON c.org_id=m.org_id WHERE m.user_id=$1) OR
      EXISTS(SELECT 1 FROM subscriptions s JOIN billing_accounts b ON b.id=s.account_id JOIN memberships m ON m.org_id=b.org_id WHERE m.user_id=$1 AND m.role='owner') OR
      EXISTS(SELECT 1 FROM memberships own JOIN memberships other ON other.org_id=own.org_id AND other.user_id<>own.user_id WHERE own.user_id=$1 AND own.role='owner') AS retained`,
-          [r.user_id],
-        );
-        check(
-          !retained?.retained,
-          'RETENTION_REVIEW_REQUIRED',
-          'Business, custody, support or shared-organization records require a retention review. Keep the request open; do not erase financial or provenance history.',
-        );
-        const u = await one(tx, 'SELECT email FROM users WHERE id=$1', [r.user_id]);
+            [r.user_id],
+          );
+          check(
+            !retained?.retained,
+            'RETENTION_REVIEW_REQUIRED',
+            'Business, custody, support or shared-organization records require a retention review. Keep the request open; do not erase financial or provenance history.',
+          );
+          const u = await one(tx, 'SELECT email FROM users WHERE id=$1', [r.user_id]);
+          await tx.query(
+            "UPDATE organization_invitations SET email=$2,status=CASE WHEN status='pending' THEN 'revoked' ELSE status END WHERE email=$1",
+            [u!.email, `closed-${r.user_id}@deleted.invalid`],
+          );
+          await tx.query(
+            "UPDATE organizations SET name='Closed personal workspace' WHERE kind='personal' AND id IN (SELECT org_id FROM memberships WHERE user_id=$1)",
+            [r.user_id],
+          );
+          await tx.query(
+            "UPDATE users SET email=$2,name='Closed account',password_hash=$3,closed_at=now() WHERE id=$1",
+            [r.user_id, `closed-${r.user_id}@deleted.invalid`, erasedPassword],
+          );
+          await tx.query(
+            'UPDATE identity_challenges SET used_at=COALESCE(used_at,now()),secret=NULL WHERE user_id=$1 OR email=$2',
+            [r.user_id, u!.email],
+          );
+          await tx.query(
+            "UPDATE identity_mail SET payload='',state=CASE WHEN state='pending' THEN 'expired' ELSE state END WHERE token_hash IN (SELECT token_hash FROM identity_challenges WHERE user_id=$1 OR email=$2)",
+            [r.user_id, u!.email],
+          );
+          try {
+            await tx.query('SELECT community_close($1)', [r.user_id]);
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('Resolve community reports'))
+              check(
+                false,
+                'RETENTION_REVIEW_REQUIRED',
+                'Resolve open community reports and appeals before closing this account.',
+              );
+            throw error;
+          }
+          for (const table of [
+            'sessions',
+            'saved_items',
+            'activity',
+            'authenticators',
+            'mfa_recovery_codes',
+          ])
+            await tx.query(`DELETE FROM ${table} WHERE user_id=$1`, [r.user_id]);
+          await tx.query('DELETE FROM media WHERE owner_id=$1', [r.user_id]);
+          await tx.query('DELETE FROM memberships WHERE user_id=$1', [r.user_id]);
+          await tx.query(
+            'UPDATE tool_keys SET revoked_at=COALESCE(revoked_at,now()) WHERE created_by=$1',
+            [r.user_id],
+          );
+        } else
+          check(
+            !(action === 'complete' && r.kind === 'age_review'),
+            'REVIEW_ACTION',
+            'Restore access after review or reject the request.',
+          );
         await tx.query(
-          "UPDATE organization_invitations SET email=$2,status=CASE WHEN status='pending' THEN 'revoked' ELSE status END WHERE email=$1",
-          [u!.email, `closed-${r.user_id}@deleted.invalid`],
+          'UPDATE privacy_requests SET status=$2,decision_note=$3,assigned_to=$4,resolved_at=now() WHERE id=$1',
+          [rid, action === 'reject' ? 'rejected' : 'completed', note, actor.id],
         );
-        await tx.query(
-          "UPDATE organizations SET name='Closed personal workspace' WHERE kind='personal' AND id IN (SELECT org_id FROM memberships WHERE user_id=$1)",
-          [r.user_id],
-        );
-        await tx.query(
-          "UPDATE users SET email=$2,name='Closed account',password_hash=$3,closed_at=now() WHERE id=$1",
-          [r.user_id, `closed-${r.user_id}@deleted.invalid`, erasedPassword],
-        );
-        await tx.query(
-          'UPDATE identity_challenges SET used_at=COALESCE(used_at,now()),secret=NULL WHERE user_id=$1 OR email=$2',
-          [r.user_id, u!.email],
-        );
-        await tx.query(
-          "UPDATE identity_mail SET payload='',state=CASE WHEN state='pending' THEN 'expired' ELSE state END WHERE token_hash IN (SELECT token_hash FROM identity_challenges WHERE user_id=$1 OR email=$2)",
-          [r.user_id, u!.email],
-        );
-        for (const table of [
-          'sessions',
-          'saved_items',
-          'activity',
-          'authenticators',
-          'mfa_recovery_codes',
-        ])
-          await tx.query(`DELETE FROM ${table} WHERE user_id=$1`, [r.user_id]);
-        await tx.query('DELETE FROM media WHERE owner_id=$1', [r.user_id]);
-        await tx.query('DELETE FROM memberships WHERE user_id=$1', [r.user_id]);
-        await tx.query(
-          'UPDATE tool_keys SET revoked_at=COALESCE(revoked_at,now()) WHERE created_by=$1',
-          [r.user_id],
-        );
-      } else
-        check(
-          !(action === 'complete' && r.kind === 'age_review'),
-          'REVIEW_ACTION',
-          'Restore access after review or reject the request.',
-        );
-      await tx.query(
-        'UPDATE privacy_requests SET status=$2,decision_note=$3,assigned_to=$4,resolved_at=now() WHERE id=$1',
-        [rid, action === 'reject' ? 'rejected' : 'completed', note, actor.id],
-      );
-      await audit(tx, actor.id, 'privacy.decided', rid, { action, note });
-      return { ok: true };
-    });
+        await audit(tx, actor.id, 'privacy.decided', rid, { action, note });
+        return { ok: true };
+      }),
+    );
   }
 }
